@@ -1,4 +1,4 @@
-# plan.md — Implementation Plan
+# plan.md — Implementation Plan & Risk Analysis
 
 ## Completed MVP Stages (Phases 1 - 3)
 
@@ -86,3 +86,42 @@
   - `src/components/network/ArbitrationCourtView.tsx`: UI for staked jurors to review disputed report evidence, inspect SHA-256 proof timestamps, and cast encrypted votes.
   - `src/store/useArbitrationStore.ts`: State management for open dispute cases, juror votes, and ruling execution timers.
 - **Verification Method**: Create dispute, simulate multi-juror voting round, verify automated ruling execution, and confirm conditional escrow settlement based on juror consensus.
+
+---
+
+## ⚠️ Blast Radius & Backward Compatibility Risk Analysis
+
+### 1. Domain Types & Precision Mismatch (`src/domain/types.ts`)
+* **Risk / Blast Radius**:
+  - EVM smart contracts represent financial amounts in 18-decimal or 6-decimal integer atomic units (`bigint`), whereas current MVP domain interfaces (`Bounty`, `Escrow`) use standard JavaScript numbers (`rewardAmount: number`).
+  - Contract addresses use checksummed hex strings (`0x...`), whereas initial mock IDs use custom string prefixes (`bounty-101`, `rep-8801`).
+* **Cascading Impact**:
+  - Modifying `rewardAmount` or `amount` directly to `bigint` without adapter layers will crash UI formatting components (`.toLocaleString()`) across `DashboardView`, `BountyCard`, `BountyDetailModal`, and `ExplorerView`.
+* **Mitigation / Compatibility Strategy**:
+  - Keep domain types in UI components normalized via a **Domain Adapter Layer** (`src/domain/adapters.ts`) that converts `bigint` atomic units to human-readable numbers and formats hashes for display.
+
+### 2. State Mutability & Async Transaction Latency (`src/store/TrustContext.tsx`)
+* **Risk / Blast Radius**:
+  - The MVP store operates synchronously with instant state updates. Real Web3 wallet signatures, IPFS pinning, and block confirmations introduce asynchronous transaction lifecycle states (`pending_signature` → `submitted_to_mempool` → `confirmed` → `indexed`).
+* **Cascading Impact**:
+  - Form modals (`SubmitVulnerabilityModal`) and UI views (`DashboardView`, `ExplorerView`) expecting instant state updates will freeze or show stale data if transaction pending/loading states are not handled cleanly.
+* **Mitigation / Compatibility Strategy**:
+  - Extend state interfaces with explicit status enums (`txStatus: 'idle' | 'mining' | 'confirmed' | 'failed'`).
+  - Maintain a **Dual-Mode Adapter Strategy**: allow the app to run seamlessly in *Demo / Simulation Mode* when no Web3 wallet is connected, and switch to *Live On-Chain Mode* when a Web3 provider is detected.
+
+### 3. W3C DID Schema Slicing & Parsing (`src/components/`)
+* **Risk / Blast Radius**:
+  - UI components currently perform naive string slicing on DID strings (e.g. `currentResearcher.id.slice(0, 16)`).
+  - Production W3C DIDs (`did:polygonid:polygon:mumbai:2q...` or `did:ion:...`) have variable lengths and structure.
+* **Cascading Impact**:
+  - UI truncation errors or layout breaking in `Header.tsx`, `PassportView.tsx`, `GraphView.tsx`, and `ExplorerView.tsx`.
+* **Mitigation / Compatibility Strategy**:
+  - Encapsulate DID formatting logic in a dedicated helper utility (`formatDid(did: string)`) rather than raw inline `.slice()`.
+
+### 4. Escrow State Expansion & Arbitration Lockouts (`src/components/views/`)
+* **Risk / Blast Radius**:
+  - Phase 8 arbitration introduces expanded escrow states (`appealed`, `slashed`, `partial_payout`).
+* **Cascading Impact**:
+  - Components checking binary status (`status === 'locked'` vs `'released'`) will miscalculate total locked/released escrow values in `DashboardView` and `BountyDetailModal`.
+* **Mitigation / Compatibility Strategy**:
+  - Implement helper predicates (`isEscrowActive(status)`, `isEscrowReleased(status)`) to maintain consistent business logic regardless of state additions.
