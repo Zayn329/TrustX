@@ -1,17 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { useTrust } from '../../store/TrustContext';
 import { ProofCard } from '../ui/ProofCard';
 import { VerificationTimeline } from '../ui/VerificationTimeline';
+import { OracleVerificationBadge } from '../ui/OracleVerificationBadge';
+import { runSandboxEvaluation, SandboxExecutionResult } from '../../../oracle/sandboxRunner';
 
 export const ExplorerView: React.FC = () => {
   const { reports, proofs, verifications, identities } = useTrust();
   const [selectedReportId, setSelectedReportId] = useState<string>(reports[0]?.id || '');
+  const [oracleResult, setOracleResult] = useState<SandboxExecutionResult | null>(null);
 
   const activeReport = reports.find(r => r.id === selectedReportId) || reports[0];
   const activeProof = proofs.find(p => p.contributionId === activeReport?.id);
   const activeVerification = verifications.find(v => v.contributionId === activeReport?.id);
   const activeResearcher = identities.find(i => i.id === activeReport?.researcherId);
+
+  useEffect(() => {
+    if (activeReport) {
+      runSandboxEvaluation(activeReport.reproductionSteps).then(res => setOracleResult(res));
+    }
+  }, [activeReport]);
 
   return (
     <div className="space-y-6">
@@ -111,6 +120,9 @@ export const ExplorerView: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Phase 7: Oracle Verification Badge */}
+            {oracleResult && <OracleVerificationBadge result={oracleResult} />}
 
             {/* Proof Card */}
             {activeProof && (

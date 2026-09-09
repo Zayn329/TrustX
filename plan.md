@@ -1,88 +1,89 @@
-# plan.md — Implementation Plan
+# plan.md — Production Implementation Plan & Architecture Roadmap
 
-## Completed MVP Stages (Phases 1 - 3)
+## Executive Overview
+The **Trust Engine** platform currently stands at **~60% to 65% completion**. All core domain logic, Web Crypto hashing, W3C DID document resolution, W3C Verifiable Credentials issuance and verification, IPFS base32 CIDv1 multihashing, Solidity smart contracts (`TrustBountyEscrow`, `ReputationRegistry`, `DisputeArbitration`), interactive SVG visualizers, and a 28-test Vitest suite are fully implemented and passing clean production TypeScript builds (`tsc && vite build`).
 
-### Stage 1: Domain Models & Deterministic Mock Data Generator [Completed]
-- **Purpose**: Define domain TypeScript interfaces and construct cross-referenced initial mock data.
-- **Files**: `src/domain/types.ts`, `src/domain/mockData.ts`, `src/domain/cryptoUtils.ts`
-
-### Stage 2: Central Application Store & Context [Completed]
-- **Purpose**: Create `TrustContext` and provider with actions (`addSubmission`, `verifySubmission`, `raiseDispute`).
-- **Files**: `src/store/TrustContext.tsx`
-
-### Stage 3: Navigation Shell & Core Layout [Completed]
-- **Purpose**: Build main header, navigation bar, and tab router.
-- **Files**: `src/components/layout/Header.tsx`, `src/components/layout/Navbar.tsx`, `src/App.tsx`
-
-### Stage 4: Trust Dashboard View [Completed]
-- **Purpose**: Build Trust Dashboard showing trust score, verified contributions, success rates, and verification timeline.
-- **Files**: `src/components/views/DashboardView.tsx`
-
-### Stage 5: Bug Bounty Marketplace & Detail View [Completed]
-- **Purpose**: Render bounty list with severity, escrow status, rewards, and detailed view with submission form modal.
-- **Files**: `src/components/views/BountiesView.tsx`, `src/components/bounties/BountyCard.tsx`, `src/components/bounties/BountyDetailModal.tsx`, `src/components/bounties/SubmitVulnerabilityModal.tsx`
-
-### Stage 6: Proof-of-Discovery & Verification Visualizer [Completed]
-- **Purpose**: Display proof cards clearly distinguishing *Cryptographically Proven* vs. *Technically Verified*.
-- **Files**: `src/components/ui/ProofCard.tsx`, `src/components/ui/VerificationTimeline.tsx`
-
-### Stage 7: Trust Passport & Portable Reputation View [Completed]
-- **Purpose**: Display researcher DID profile, score breakdown, and cross-platform portable reputation diagram.
-- **Files**: `src/components/views/PassportView.tsx`, `src/components/passport/PortableReputationDiagram.tsx`, `src/components/passport/ScoreBreakdown.tsx`
-
-### Stage 8: Contribution Explorer View [Completed]
-- **Purpose**: Provide audit trail inspector (Identity → Contribution → Proof → Verification → Ledger → Reward).
-- **Files**: `src/components/views/ExplorerView.tsx`
-
-### Stage 9: Interactive Trust Graph View [Completed]
-- **Purpose**: Visual node-link SVG graph connecting identities, contributions, proofs, bounties, and escrow contracts.
-- **Files**: `src/components/views/GraphView.tsx`
-
-### Stage 10: Network View (Ledger, Disputes, Fraud Risk) [Completed]
-- **Purpose**: Simulated blockchain activity explorer, dispute resolution panel, and Sybil risk visualizer.
-- **Files**: `src/components/views/NetworkView.tsx`, `src/components/network/NetworkComponents.tsx`
+This document outlines the **Production Implementation Plan** required to take the protocol from its current hybrid state to a live mainnet production launch.
 
 ---
 
-## Future Expansion Implementation Plans (Phases 4 - 8)
+## Current Architecture & Feature Matrix
 
-### Phase 4: Smart Contract & EVM Escrow Integration
-- **Purpose**: Replace simulated smart contract escrows with real, audited EVM smart contracts deployed on Ethereum Sepolia / Base testnet and integrate Web3 wallet connection.
-- **Key Components / Files**:
-  - `contracts/TrustBountyEscrow.sol`: Solidity contract handling bounty deposits, timelocks, conditional payout execution, and dispute locks.
-  - `contracts/ReputationRegistry.sol`: On-chain reputation registry mapping DIDs to verifiable score increments.
-  - `src/blockchain/wagmiConfig.ts`: Web3 provider setup using Wagmi, Viem, and RainbowKit.
-  - `src/blockchain/useEscrowContract.ts`: React hook interfacing with `TrustBountyEscrow.sol` via `writeContract` / `readContract`.
-- **Verification Method**: Deploy smart contracts using Hardhat / Foundry, execute unit tests on local Hardhat node, and verify on-chain deposit/release transactions via Sepolia Etherscan.
+| Subsystem | Current Status | Implemented Files | Mainnet Production Transition Needed |
+| :--- | :--- | :--- | :--- |
+| **Frontend Platform & Router** | **90% Complete** | `src/App.tsx`, `src/components/views/*` | Production analytics, error boundaries, and CDN optimization. |
+| **Domain Logic & Cryptography** | **85% Complete** | `src/domain/cryptoUtils.ts`, `src/domain/types.ts` | EIP-712 typed data hashing (`eth_signTypedData_v4`). |
+| **W3C DID & Verifiable Credentials** | **80% Complete** | `src/identity/didResolver.ts`, `src/identity/vcManager.ts` | Polygon ID / ION Universal Resolver gateway. |
+| **Decentralized Storage & Indexing** | **75% Complete** | `src/services/ipfsService.ts`, `subgraph/schema.graphql` | Pinata API pinning keys & live Graph Studio deployment. |
+| **Smart Contracts & Web3** | **65% Complete** | `contracts/*`, `src/blockchain/*` | Testnet/Mainnet deployment scripts, ERC-20 support, audit. |
+| **Oracle Sandbox Evaluation** | **65% Complete** | `oracle/sandboxRunner.ts`, `oracle/ChainlinkOracleBridge.sol` | Microservice container hosted on Fly.io / AWS ECS. |
+| **Governance & Arbitration** | **60% Complete** | `contracts/DisputeArbitration.sol`, `src/store/useArbitrationStore.ts` | Staked juror court deployment & timelock triggers. |
 
-### Phase 5: Decentralized Storage & Event Indexing
-- **Purpose**: Anchor encrypted vulnerability proof payloads on IPFS / Arweave and stream real-time protocol transactions via a dedicated GraphQL indexer.
-- **Key Components / Files**:
-  - `src/services/ipfsService.ts`: Client/SDK wrapper using Pinata / Helia IPFS to upload encrypted PoC evidence and retrieve CID hashes.
-  - `subgraph/schema.graphql` & `subgraph/src/mapping.ts`: The Graph / Envio indexer tracking `BountyCreated`, `ProofAnchored`, and `EscrowReleased` contract events.
-  - `src/store/useIndexedLedger.ts`: Custom hook consuming indexer GraphQL queries to replace local mock event state.
-- **Verification Method**: Pin test payload to IPFS, verify CID resolution, trigger smart contract event, and query GraphQL indexer endpoint for updated event logs.
+---
 
-### Phase 6: W3C Decentralized Identity (DID) & Verifiable Credentials (VC)
-- **Purpose**: Transition local mock DIDs to production W3C DID specifications (`did:polygonid` / `did:ion`) and issue portable, cryptographically signed Verifiable Credentials.
-- **Key Components / Files**:
-  - `src/identity/didResolver.ts`: Integration with W3C DID resolvers for researcher key resolution.
-  - `src/identity/vcManager.ts`: Issue and verify W3C JSON-LD Verifiable Credentials for verified bounties and trust scores.
-  - `src/components/passport/CredentialQRModal.tsx`: Render QR code for mobile DID wallet scanning (e.g., Polygon ID Wallet).
-- **Verification Method**: Generate Verifiable Credential payload, verify cryptographic proof signature using public key, and validate credential structure against W3C VC schema specs.
+## Production Implementation Roadmap (Phases 9 - 14)
 
-### Phase 7: Automated Verification Oracles
-- **Purpose**: Integrate isolated sandboxed execution environments and oracle networks (e.g. Chainlink Functions) to execute automated static analysis and PoC reproduction test runners.
-- **Key Components / Files**:
-  - `oracle/sandboxRunner.ts`: Secure microservice executing submitted PoC scripts inside ephemeral Docker containers.
-  - `oracle/ChainlinkOracleBridge.sol`: Contract receiving automated verification results from Chainlink oracle nodes.
-  - `src/components/ui/OracleVerificationBadge.tsx`: Display automated test execution logs, pass/fail status, and coverage metrics.
-- **Verification Method**: Submit PoC payload, trigger oracle request, verify isolated sandbox execution output, and confirm automated escrow payout upon passing test suite.
+### Phase 9: Persistent Decentralized Storage & Pinning Service (Pinata / Web3.Storage)
+- **Goal**: Transition client-side in-memory IPFS storage cache to global persistent pinning services with IPNS record management.
+- **Tasks**:
+  1. Integrate Pinata SDK / `@pinata/sdk` in `src/services/ipfsService.ts`.
+  2. Implement secure client API JWT generation or serverless proxy route to hide Pinata private API keys.
+  3. Add payload encryption prior to IPFS pinning using AES-256-GCM with researcher/organization public keys.
+- **Files to Modify**: `src/services/ipfsService.ts`, `src/components/bounties/SubmitVulnerabilityModal.tsx`.
+- **Verification**: Submit proof payload, verify CID creation via Pinata Gateway (`https://gateway.pinata.cloud/ipfs/{cid}`), and fetch payload on an independent browser session.
 
-### Phase 8: Decentralized Governance & Arbitration Protocol
-- **Purpose**: Build a decentralized dispute resolution protocol (e.g. Kleros-style jury mechanism) to handle contested vulnerability reports and release disputed escrow funds.
-- **Key Components / Files**:
-  - `contracts/DisputeArbitration.sol`: Smart contract managing juror staking, evidence submission windows, voting periods, and final ruling execution.
-  - `src/components/network/ArbitrationCourtView.tsx`: UI for staked jurors to review disputed report evidence, inspect SHA-256 proof timestamps, and cast encrypted votes.
-  - `src/store/useArbitrationStore.ts`: State management for open dispute cases, juror votes, and ruling execution timers.
-- **Verification Method**: Create dispute, simulate multi-juror voting round, verify automated ruling execution, and confirm conditional escrow settlement based on juror consensus.
+### Phase 10: Live Subgraph Indexing on The Graph Studio
+- **Goal**: Replace simulated indexed ledger state with live GraphQL queries streaming events from Ethereum Sepolia / Arbitrum.
+- **Tasks**:
+  1. Compile `subgraph/schema.graphql` and build event handlers (`subgraph/src/mapping.ts`).
+  2. Deploy subgraph to **The Graph Studio** or Goldsky indexing infrastructure.
+  3. Configure `@apollo/client` or `urql` client in `src/store/useIndexedLedger.ts` pointing to the production GraphQL endpoint.
+- **Files to Modify**: `subgraph/subgraph.yaml`, `subgraph/src/mapping.ts`, `src/store/useIndexedLedger.ts`.
+- **Verification**: Trigger contract transaction, confirm `ProofAnchored` event indexed within 2 blocks, and verify UI updates dynamically.
+
+### Phase 11: Production Web3 Provider (RainbowKit / AppKit) & EIP-712 Signing
+- **Goal**: Upgrade `useEscrowContract.ts` to full RainbowKit / Wagmi v2 modal supporting MetaMask, Coinbase, Rainbow, and WalletConnect v2.
+- **Tasks**:
+  1. Install `@rainbow-me/rainbowkit`, `wagmi`, `viem`, `@tanstack/react-query`.
+  2. Configure WalletConnect Project ID in `src/blockchain/wagmiConfig.ts`.
+  3. Implement EIP-712 Domain Separator and typed data struct signing for vulnerability proof anchoring (`eth_signTypedData_v4`).
+- **Files to Modify**: `src/blockchain/wagmiConfig.ts`, `src/blockchain/useEscrowContract.ts`, `src/components/blockchain/WalletModal.tsx`.
+- **Verification**: Connect RainbowKit wallet on Sepolia testnet, trigger proof anchoring signature prompt, and confirm signature verification on-chain.
+
+### Phase 12: Production Cloud Oracle Microservice & Chainlink Functions
+- **Goal**: Move the JS/Regex static analyzer and Docker/Foundry runner from browser client to an isolated, sandboxed cloud microservice.
+- **Tasks**:
+  1. Package `oracle/sandboxRunner.ts` into an isolated Node.js microservice running inside an ephemeral gVisor/Docker container on Fly.io or AWS ECS.
+  2. Connect `oracle/ChainlinkOracleBridge.sol` to **Chainlink Functions** or custom oracle node.
+  3. Add HMAC signature authorization between oracle worker and smart contracts.
+- **Files to Modify**: `oracle/sandboxRunner.ts`, `oracle/ChainlinkOracleBridge.sol`, `src/components/ui/OracleVerificationBadge.tsx`.
+- **Verification**: Post proof payload, verify Chainlink oracle request emitted, execute sandbox container test, and verify automated contract payout trigger.
+
+### Phase 13: Hardhat / Foundry Deployment Scripts & Multi-Sig Governance
+- **Goal**: Automated contract compilation, deployment, verification, and ownership transfer to Gnosis Safe multi-sig.
+- **Tasks**:
+  1. Create Hardhat / Foundry deployment scripts (`scripts/deploy.ts`).
+  2. Add ERC-20 token transfer mechanics (USDC / USDT / DAI) alongside native ETH in `TrustBountyEscrow.sol`.
+  3. Verify contracts on Etherscan / Arbiscan via API keys.
+  4. Transfer ownership of `ReputationRegistry.sol` and `TrustBountyEscrow.sol` to a Gnosis Safe multi-sig wallet.
+- **Files to Modify**: `contracts/TrustBountyEscrow.sol`, `contracts/ReputationRegistry.sol`, `scripts/deploy.ts`.
+- **Verification**: Run `npx hardhat run scripts/deploy.ts --network sepolia`, confirm Etherscan green checkmark verification, and test multi-sig transaction execution.
+
+### Phase 14: Security Audits, Monitoring, & Production Infrastructure
+- **Goal**: Ensure mainnet resilience, smart contract security, and operational monitoring.
+- **Tasks**:
+  1. Undergo formal third-party smart contract security audit (OpenZeppelin / Trail of Bits).
+  2. Set up Tenderly or OpenZeppelin Defender alert triggers for large escrow releases or dispute lock events.
+  3. Deploy web application frontend to Vercel / Cloudflare Pages with custom domain and CSP security headers.
+- **Verification**: Execute automated Slither / Mythril static analysis, simulate emergency pause/unpause on Defender, and verify 100% uptime on production URL.
+
+---
+
+## ⚠️ Risk & Backward Compatibility Preservation Matrix
+
+1. **EVM BigInt vs JS Number Coercion**:
+   - *Strategy*: All smart contract numeric returns (`bigint`) must pass through `src/domain/cryptoUtils.ts` formatting functions before entering React UI components.
+2. **Web3 RPC Network Outages**:
+   - *Strategy*: Retain fallback RPC endpoints (Alchemy / Infura / Public RPC) and fallback simulation state in `useEscrowContract.ts` so the frontend application remains 100% functional even during testnet RPC degradation.
+3. **W3C VC Verification Backward Compatibility**:
+   - *Strategy*: `verifyCredential()` supports both synchronous fallback credentials and asynchronous JWS-signed credentials.

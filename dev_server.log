@@ -7,3 +7,12 @@
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: use --host to expose
+11:30:52 AM [vite] (client) hmr update /src/components/layout/Header.tsx, /src/index.css
+11:30:52 AM [vite] (client) hmr update /src/components/layout/Header.tsx, /src/index.css
+11:30:52 AM [vite] (client) hmr update /src/components/views/PassportView.tsx, /src/index.css
+11:31:15 AM [vite] (client) hmr update /src/components/views/ExplorerView.tsx, /src/index.css
+11:31:24 AM [vite] (client) hmr update /src/components/views/NetworkView.tsx, /src/index.css
+11:37:12 AM [vite] vite.config.ts changed, restarting server...
+11:37:12 AM [vite] (client) Re-optimizing dependencies because lockfile has changed
+11:37:12 AM [vite] server restarted.
+11:41:19 AM [vite] changed tsconfig file detected: /app/tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.
