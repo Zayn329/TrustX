@@ -1,11 +1,20 @@
-import React from 'react';
-import { UserCheck, Key, Award } from 'lucide-react';
+import React, { useState } from 'react';
+import { UserCheck, Key, Award, QrCode } from 'lucide-react';
 import { useTrust } from '../../store/TrustContext';
 import { PortableReputationDiagram } from '../passport/PortableReputationDiagram';
 import { ScoreBreakdown } from '../passport/ScoreBreakdown';
+import { CredentialQRModal } from '../passport/CredentialQRModal';
+import { issueTrustScoreCredential } from '../../identity/vcManager';
 
 export const PassportView: React.FC = () => {
   const { currentResearcher, reputationEvents } = useTrust();
+  const [isCredentialModalOpen, setIsCredentialModalOpen] = useState(false);
+
+  const credential = issueTrustScoreCredential(
+    currentResearcher.id,
+    currentResearcher.trustScore,
+    currentResearcher.successfulBountiesCount
+  );
 
   return (
     <div className="space-y-8">
@@ -29,20 +38,30 @@ export const PassportView: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-6 bg-slate-950 p-4 rounded-xl border border-slate-800/80 w-full md:w-auto justify-around">
-          <div className="text-center">
-            <div className="text-[10px] text-slate-500 font-medium uppercase">Trust Score</div>
-            <div className="text-xl font-bold text-emerald-400 mt-0.5">{currentResearcher.trustScore} / 100</div>
-          </div>
-          <div className="w-px h-8 bg-slate-800" />
-          <div className="text-center">
-            <div className="text-[10px] text-slate-500 font-medium uppercase">Total Bounties</div>
-            <div className="text-xl font-bold text-slate-100 mt-0.5">{currentResearcher.successfulBountiesCount}</div>
-          </div>
-          <div className="w-px h-8 bg-slate-800" />
-          <div className="text-center">
-            <div className="text-[10px] text-slate-500 font-medium uppercase">Rewards Earned</div>
-            <div className="text-xl font-bold text-amber-400 mt-0.5">${currentResearcher.totalRewardsEarned.toLocaleString()}</div>
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+          <button
+            onClick={() => setIsCredentialModalOpen(true)}
+            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-600/20"
+          >
+            <QrCode className="w-4 h-4" />
+            <span>Export W3C Credential</span>
+          </button>
+
+          <div className="flex items-center gap-6 bg-slate-950 p-4 rounded-xl border border-slate-800/80 w-full sm:w-auto justify-around">
+            <div className="text-center">
+              <div className="text-[10px] text-slate-500 font-medium uppercase">Trust Score</div>
+              <div className="text-xl font-bold text-emerald-400 mt-0.5">{currentResearcher.trustScore} / 100</div>
+            </div>
+            <div className="w-px h-8 bg-slate-800" />
+            <div className="text-center">
+              <div className="text-[10px] text-slate-500 font-medium uppercase">Total Bounties</div>
+              <div className="text-xl font-bold text-slate-100 mt-0.5">{currentResearcher.successfulBountiesCount}</div>
+            </div>
+            <div className="w-px h-8 bg-slate-800" />
+            <div className="text-center">
+              <div className="text-[10px] text-slate-500 font-medium uppercase">Rewards Earned</div>
+              <div className="text-xl font-bold text-amber-400 mt-0.5">${currentResearcher.totalRewardsEarned.toLocaleString()}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -81,6 +100,12 @@ export const PassportView: React.FC = () => {
           ))}
         </div>
       </div>
+
+      <CredentialQRModal
+        isOpen={isCredentialModalOpen}
+        onClose={() => setIsCredentialModalOpen(false)}
+        credential={credential}
+      />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import React from 'react';
 import { Activity } from 'lucide-react';
 import { useTrust } from '../../store/TrustContext';
 import { LedgerExplorer, DisputePanel, RiskAnalysis } from '../network/NetworkComponents';
+import { ArbitrationCourtView } from '../network/ArbitrationCourtView';
 
 export const NetworkView: React.FC = () => {
   const { blockchainEvents, disputes, sybilRisks } = useTrust();
@@ -19,6 +20,9 @@ export const NetworkView: React.FC = () => {
       </div>
 
       <LedgerExplorer events={blockchainEvents} />
+
+      {/* Phase 8: Arbitration Court View */}
+      <ArbitrationCourtView />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <DisputePanel disputes={disputes} />

@@ -1,0 +1,27 @@
+type Bounty @entity {
+  id: ID!
+  title: String!
+  organization: String!
+  rewardAmount: BigInt!
+  status: String!
+  escrowContract: String!
+}
+
+type ProofAnchor @entity {
+  id: ID!
+  submissionId: String!
+  contentHash: String!
+  ipfsCid: String!
+  researcherDid: String!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+}
+
+type EscrowRelease @entity {
+  id: ID!
+  bountyId: String!
+  researcherAddress: String!
+  amount: BigInt!
+  txHash: String!
+  timestamp: BigInt!
+}
