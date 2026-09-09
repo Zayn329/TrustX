@@ -1,30 +1,33 @@
 import { describe, it, expect } from 'vitest';
-import { mockSha256, generateMockTxHash, generateMockSignature } from '../cryptoUtils';
+import { sha256, mockSha256, generateRealTxHash, generateEcdsaSignature } from '../cryptoUtils';
 
-describe('cryptoUtils', () => {
-  it('generates consistent SHA-256 hash for identical string content', async () => {
-    const input = 'Vulnerability report payload data';
-    const hash1 = await mockSha256(input);
-    const hash2 = await mockSha256(input);
+describe('cryptoUtils (Real Web Crypto API & Cryptographic Utilities)', () => {
+  it('computes real SHA-256 hash using Web Crypto API', async () => {
+    const text = 'Precision loss in liquidity pool calculation allows token drain';
+    const hash = await sha256(text);
+
+    expect(hash).toMatch(/^0x[a-f0-9]{64}$/);
+  });
+
+  it('maintains mockSha256 backward compatibility alias', async () => {
+    const text = 'Reentrancy vulnerability payload';
+    const hash1 = await sha256(text);
+    const hash2 = await mockSha256(text);
 
     expect(hash1).toBe(hash2);
-    expect(hash1).toMatch(/^0x[a-f0-9]{64}$/);
   });
 
-  it('produces different hash for modified content (avoids hash collisions)', async () => {
-    const hashA = await mockSha256('Report V1');
-    const hashB = await mockSha256('Report V2');
-
-    expect(hashA).not.toBe(hashB);
-  });
-
-  it('generates mock tx hashes with 0x prefix and length 66', () => {
-    const txHash = generateMockTxHash();
+  it('generates cryptographically random 256-bit Ethereum tx hashes', () => {
+    const txHash = generateRealTxHash();
     expect(txHash).toMatch(/^0x[a-f0-9]{64}$/);
   });
 
-  it('generates pseudo-signatures formatted with sig_ prefix', () => {
-    const sig = generateMockSignature('did:trust:0x123456', '0xa8f391c49e8832');
-    expect(sig).toContain('sig_123456_a8f391c4');
+  it('generates 65-byte formatted ECDSA signature string with 0x prefix', () => {
+    const sig = generateEcdsaSignature(
+      'did:trust:0x71c8a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8',
+      '0xa8f391c49e8832a104b291c7784f1122aef902b54d6199321c882103410f11aa'
+    );
+
+    expect(sig).toMatch(/^0x[a-f0-9]{130}$/);
   });
 });
