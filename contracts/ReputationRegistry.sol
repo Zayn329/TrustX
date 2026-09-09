@@ -6,6 +6,8 @@ pragma solidity ^0.8.20;
  * @dev On-chain portable reputation registry mapping DIDs to verifiable trust score increments.
  */
 contract ReputationRegistry {
+    address public owner;
+
     struct ReputationRecord {
         string did;
         uint256 trustScore;
@@ -16,7 +18,16 @@ contract ReputationRegistry {
 
     event ReputationUpdated(string indexed did, uint256 newScore, uint256 increment);
 
-    function updateReputation(string calldata did, uint256 increment) external {
+    modifier onlyOwner() {
+        require(msg.sender == owner, "ReputationRegistry: caller is not the owner");
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function updateReputation(string calldata did, uint256 increment) external onlyOwner {
         ReputationRecord storage record = records[did];
         if (bytes(record.did).length == 0) {
             record.did = did;

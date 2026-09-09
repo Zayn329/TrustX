@@ -18,14 +18,19 @@ contract DisputeArbitration {
     }
 
     mapping(uint256 => DisputeCase) public cases;
+    mapping(uint256 => mapping(address => bool)) public hasVoted;
 
     event JurorVoted(uint256 indexed disputeId, address indexed juror, Ruling vote);
     event RulingExecuted(uint256 indexed disputeId, Ruling ruling);
 
     function castVote(uint256 disputeId, Ruling vote) external {
         require(vote == Ruling.ResearcherWins || vote == Ruling.CompanyWins, "Invalid vote option");
+        require(!hasVoted[disputeId][msg.sender], "Juror has already voted in this dispute");
+
         DisputeCase storage dCase = cases[disputeId];
         require(!dCase.isResolved, "Dispute already resolved");
+
+        hasVoted[disputeId][msg.sender] = true;
 
         if (vote == Ruling.ResearcherWins) {
             dCase.votesForResearcher += 1;

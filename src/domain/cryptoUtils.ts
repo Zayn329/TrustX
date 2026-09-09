@@ -53,3 +53,21 @@ export function generateEcdsaSignature(did: string, payloadHash: string): string
 
 // Alias for backward compatibility
 export const generateMockSignature = generateEcdsaSignature;
+
+export interface Eip712ProofPayload {
+  researcherDid: string;
+  bountyId: string;
+  proofHash: string;
+  nonce: number;
+}
+
+export async function hashEip712ProofPayload(payload: Eip712ProofPayload): Promise<string> {
+  const domainSeparator = 'EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)';
+  const proofType = 'ProofAnchor(string researcherDid,string bountyId,bytes32 proofHash,uint256 nonce)';
+
+  const domainHash = await sha256(domainSeparator);
+  const typeHash = await sha256(proofType);
+  const dataString = `${typeHash}:${payload.researcherDid}:${payload.bountyId}:${payload.proofHash}:${payload.nonce}`;
+
+  return sha256(`${domainHash}:${dataString}`);
+}

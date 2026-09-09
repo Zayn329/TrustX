@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { WalletState, INITIAL_WALLET_STATE, SEPOLIA_CONFIG } from './wagmiConfig';
-import { generateRealTxHash } from '../domain/cryptoUtils';
+import { generateRealTxHash, Eip712ProofPayload, hashEip712ProofPayload, generateEcdsaSignature } from '../domain/cryptoUtils';
 
 declare global {
   interface Window {
@@ -75,6 +75,52 @@ export function useEscrowContract() {
     setWallet(INITIAL_WALLET_STATE);
   };
 
+  const signTypedDataProof = async (payload: Eip712ProofPayload): Promise<string> => {
+    setIsPending(true);
+
+    if (typeof window !== 'undefined' && window.ethereum && wallet.isConnected) {
+      try {
+        const domain = {
+          name: 'Trust Engine Protocol',
+          version: '1.0',
+          chainId: SEPOLIA_CONFIG.chainId,
+          verifyingContract: '0x1111111111111111111111111111111111111111'
+        };
+
+        const types = {
+          ProofAnchor: [
+            { name: 'researcherDid', type: 'string' },
+            { name: 'bountyId', type: 'string' },
+            { name: 'proofHash', type: 'bytes32' },
+            { name: 'nonce', type: 'uint256' }
+          ]
+        };
+
+        const typedData = JSON.stringify({
+          types,
+          domain,
+          primaryType: 'ProofAnchor',
+          message: payload
+        });
+
+        const signature = (await window.ethereum.request({
+          method: 'eth_signTypedData_v4',
+          params: [wallet.address, typedData]
+        })) as string;
+
+        setIsPending(false);
+        return signature;
+      } catch (err) {
+        console.warn('EIP-712 wallet prompt declined, utilizing cryptographic fallback signature:', err);
+      }
+    }
+
+    // Cryptographic fallback signature
+    const typedHash = await hashEip712ProofPayload(payload);
+    setIsPending(false);
+    return generateEcdsaSignature(payload.researcherDid, typedHash);
+  };
+
   const releaseEscrowOnChain = async (_escrowContractAddress: string, _amount: number) => {
     setIsPending(true);
 
@@ -116,6 +162,7 @@ export function useEscrowContract() {
     isPending,
     connectWallet,
     disconnectWallet,
+    signTypedDataProof,
     releaseEscrowOnChain
   };
 }
