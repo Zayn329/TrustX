@@ -1,0 +1,29 @@
+# Task Checklist & Progress Tracking (task.md)
+
+- [x] Exploration & Repo Baseline (`exploration-report.md`)
+- [x] Requirements & Specification (`spec.md`)
+- [x] Architecture & Design (`design.md`)
+- [x] Task & Plan Documentation (`task.md`, `plan.md`, `AGENTS.md`)
+- [x] Stage 1: Workspace setup (Package manifests, Vite, Tailwind CSS, TypeScript, Vitest)
+- [x] Stage 2: Pure Domain Logic & Types (`src/types/`, `src/domain/crypto.ts`, `src/domain/trustScore.ts`, `src/domain/escrow.ts`, `src/domain/sybil.ts`)
+- [x] Stage 3: Initial Domain Unit Tests (`src/domain/__tests__/`)
+- [x] Stage 4: Reactive State Store & Deterministic Seed Data (`src/store/useTrustStore.ts`)
+- [x] Stage 5: Application Shell & Unified Navigation Header (`src/App.tsx`)
+- [x] Stage 6: Views Implementation
+  - [x] 6.1 Trust Dashboard View
+  - [x] 6.2 Bug Bounty Marketplace & Detail View
+  - [x] 6.3 Smart Contract Escrow Visualizer
+  - [x] 6.4 Vulnerability Submission & Proof-of-Discovery Flow
+  - [x] 6.5 Verification Timeline Component
+  - [x] 6.6 Decentralized Identity Profile
+  - [x] 6.7 Portable Reputation Passport Visualizer
+  - [x] 6.8 Trust Score Breakdown Component
+  - [x] 6.9 Contribution Verification Trace Explorer
+  - [x] 6.10 Trust & Contribution Node Graph
+  - [x] 6.11 Dispute Resolution View
+  - [x] 6.12 Blockchain Ledger Explorer
+  - [x] 6.13 Sybil & Fraud Risk Matrix
+  - [x] 6.14 Interactive Quick-Demo Tour Controller
+- [x] Stage 7: Integration Testing & Build Verification
+- [x] Stage 8: Quality Review & Pre-commit checks
+- [x] Stage 9: Final Submission
