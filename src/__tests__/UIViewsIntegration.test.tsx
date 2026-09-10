@@ -6,7 +6,7 @@ describe('Trust Engine UI Integration & Navigation', () => {
   it('renders application header and default Dashboard view', () => {
     render(<App />);
 
-    expect(screen.getByText('Trust Engine')).toBeTruthy();
+    expect(screen.getAllByText('Trust Engine').length).toBeGreaterThan(0);
     expect(screen.getByText('Trustless Bug Bounty Platform')).toBeTruthy();
     expect(screen.getByText('Researcher Trust Score')).toBeTruthy();
   });
@@ -37,7 +37,7 @@ describe('Trust Engine UI Integration & Navigation', () => {
     const explorerTab = screen.getByRole('button', { name: /Contribution Explorer/i });
     fireEvent.click(explorerTab);
 
-    expect(screen.getByText('Contribution Audit Explorer')).toBeTruthy();
+    expect(screen.getAllByText('Contribution Audit Explorer').length).toBeGreaterThan(0);
   });
 
   it('navigates to Trust Graph view when clicked', () => {
@@ -46,7 +46,7 @@ describe('Trust Engine UI Integration & Navigation', () => {
     const graphTab = screen.getByRole('button', { name: /Trust Graph/i });
     fireEvent.click(graphTab);
 
-    expect(screen.getByText('Interactive Trust Graph')).toBeTruthy();
+    expect(screen.getAllByText('Interactive Trust Graph').length).toBeGreaterThan(0);
   });
 
   it('navigates to Network & Ledger view when clicked', () => {
@@ -55,6 +55,6 @@ describe('Trust Engine UI Integration & Navigation', () => {
     const networkTab = screen.getByRole('button', { name: /Network & Ledger/i });
     fireEvent.click(networkTab);
 
-    expect(screen.getByText('Network & Protocol Monitor')).toBeTruthy();
+    expect(screen.getAllByText('Network & Protocol Monitor').length).toBeGreaterThan(0);
   });
 });

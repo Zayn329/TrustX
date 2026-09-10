@@ -37,15 +37,15 @@ export const VerificationTimeline: React.FC<VerificationTimelineProps> = ({ curr
   const activeIdx = getStageIndex(currentStage);
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
       <h3 className="text-sm font-bold text-slate-200 mb-6">Verification Lifecycle Timeline</h3>
 
       <div className="relative overflow-x-auto scrollbar-none pb-2">
-        <div className="flex items-center justify-between min-w-[700px]">
-          {/* Connecting Line */}
+        <div className="flex items-center justify-between min-w-[700px] px-2">
+          {/* Connecting Base Line */}
           <div className="absolute top-5 left-8 right-8 h-0.5 bg-slate-800 -z-0" />
           <div
-            className="absolute top-5 left-8 h-0.5 bg-indigo-500 transition-all duration-500 -z-0"
+            className="absolute top-5 left-8 h-0.5 bg-indigo-500 transition-all duration-500 -z-0 shadow-sm shadow-indigo-500/50"
             style={{ width: `${(activeIdx / (stages.length - 1)) * 90}%` }}
           />
 
@@ -60,13 +60,17 @@ export const VerificationTimeline: React.FC<VerificationTimelineProps> = ({ curr
                     isPassed
                       ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
                       : 'bg-slate-950 text-slate-600 border border-slate-800'
-                  } ${isCurrent ? 'ring-4 ring-indigo-500/20 border-2 border-indigo-400' : ''}`}
+                  } ${isCurrent ? 'ring-4 ring-indigo-500/30 border-2 border-indigo-400 animate-pulse' : ''}`}
                 >
                   {stage.icon}
                 </div>
                 <span
-                  className={`mt-3 text-xs font-medium whitespace-nowrap ${
-                    isPassed ? 'text-slate-200 font-semibold' : 'text-slate-500'
+                  className={`mt-3 text-xs whitespace-nowrap transition-colors ${
+                    isCurrent
+                      ? 'text-indigo-300 font-bold'
+                      : isPassed
+                      ? 'text-slate-200 font-semibold'
+                      : 'text-slate-500'
                   }`}
                 >
                   {stage.label}

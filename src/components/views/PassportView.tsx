@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserCheck, Key, Award, QrCode } from 'lucide-react';
+import { UserCheck, Key, Award, QrCode, ArrowLeft, ShieldAlert, Sliders } from 'lucide-react';
 import { useTrust } from '../../store/TrustContext';
 import { PortableReputationDiagram } from '../passport/PortableReputationDiagram';
 import { ScoreBreakdown } from '../passport/ScoreBreakdown';
@@ -10,6 +10,13 @@ export const PassportView: React.FC = () => {
   const { currentResearcher, reputationEvents } = useTrust();
   const [isCredentialModalOpen, setIsCredentialModalOpen] = useState(false);
 
+  // Category I Item 87: Interactive Reputation Score Simulator
+  const [simCriticalCount, setSimCriticalCount] = useState(2);
+  const [simHighCount, setSimHighCount] = useState(3);
+  const [simPenaltyCount, setSimPenaltyCount] = useState(0);
+
+  const simulatedScore = Math.min(100, Math.max(0, 30 + (simCriticalCount * 15) + (simHighCount * 8) - (simPenaltyCount * 20)));
+
   const credential = issueTrustScoreCredential(
     currentResearcher.id,
     currentResearcher.trustScore,
@@ -19,9 +26,16 @@ export const PassportView: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Header Profile Card */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm">
         <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold text-xl">
+          <button
+            onClick={() => { window.location.hash = '#dashboard'; }}
+            className="p-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition-colors"
+            title="Back to Dashboard Overview"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold text-xl flex-shrink-0">
             <UserCheck className="w-8 h-8" />
           </div>
           <div>
@@ -69,35 +83,114 @@ export const PassportView: React.FC = () => {
       {/* Portable Reputation Model */}
       <PortableReputationDiagram />
 
-      {/* Score Breakdown */}
+      {/* Score Breakdown (Issue 22) */}
       <ScoreBreakdown
         factors={currentResearcher.reputationFactors}
         totalScore={currentResearcher.trustScore}
       />
 
-      {/* Verified On-Chain Reputation History */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+      {/* Interactive Reputation Score Simulator (Category I Item 87) */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <Sliders className="w-5 h-5 text-indigo-400" />
+            <h3 className="text-sm font-bold text-slate-200">Interactive Reputation Score Simulator</h3>
+          </div>
+          <span className="text-xs bg-indigo-500/10 text-indigo-300 font-mono font-bold px-3 py-1 rounded-full border border-indigo-500/20">
+            Simulated Score: {simulatedScore} / 100
+          </span>
+        </div>
+
+        <p className="text-xs text-slate-400">
+          Adjust the sliders below to test how submitting verified bounties dynamically impacts portable reputation scores in real time.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs font-semibold text-slate-300">
+              <span>Critical Reports Verified</span>
+              <span className="font-mono text-emerald-400">{simCriticalCount} (+{simCriticalCount * 15} pts)</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="5"
+              value={simCriticalCount}
+              onChange={e => setSimCriticalCount(Number(e.target.value))}
+              className="w-full accent-indigo-500"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs font-semibold text-slate-300">
+              <span>High Severity Reports</span>
+              <span className="font-mono text-sky-400">{simHighCount} (+{simHighCount * 8} pts)</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="8"
+              value={simHighCount}
+              onChange={e => setSimHighCount(Number(e.target.value))}
+              className="w-full accent-indigo-500"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs font-semibold text-slate-300">
+              <span>Sybil / Fraud Penalty Flags</span>
+              <span className="font-mono text-rose-400">{simPenaltyCount} (-{simPenaltyCount * 20} pts)</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="3"
+              value={simPenaltyCount}
+              onChange={e => setSimPenaltyCount(Number(e.target.value))}
+              className="w-full accent-rose-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Verified On-Chain Reputation History (Issue 23) */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
         <h3 className="text-sm font-bold text-slate-200 mb-4">On-Chain Reputation Event Log</h3>
         <div className="space-y-3">
-          {reputationEvents.map(evt => (
-            <div
-              key={evt.id}
-              className="bg-slate-950 p-4 rounded-lg border border-slate-800/80 flex items-center justify-between text-xs"
-            >
-              <div className="space-y-1">
-                <div className="font-semibold text-slate-200 flex items-center gap-2">
-                  <Award className="w-4 h-4 text-emerald-400" />
-                  <span>{evt.reason}</span>
+          {reputationEvents.map(evt => {
+            const isPositive = evt.delta >= 0;
+
+            return (
+              <div
+                key={evt.id}
+                className="bg-slate-950 p-4 rounded-xl border border-slate-800/80 flex items-center justify-between text-xs transition-all hover:bg-slate-900/60"
+              >
+                <div className="space-y-1">
+                  <div className="font-semibold text-slate-200 flex items-center gap-2">
+                    {isPositive ? (
+                      <Award className="w-4 h-4 text-emerald-400" />
+                    ) : (
+                      <ShieldAlert className="w-4 h-4 text-rose-400" />
+                    )}
+                    <span>{evt.reason}</span>
+                  </div>
+                  <div className="font-mono text-[10px] text-slate-500">
+                    Tx: {evt.txHash} • {new Date(evt.timestamp).toLocaleString()}
+                  </div>
                 </div>
-                <div className="font-mono text-[10px] text-slate-500">
-                  Tx: {evt.txHash} • {new Date(evt.timestamp).toLocaleString()}
+
+                <div
+                  className={`font-bold px-3 py-1 rounded-lg border font-mono text-xs ${
+                    isPositive
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                      : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                  }`}
+                >
+                  {isPositive ? `+${evt.delta}` : evt.delta} Score
                 </div>
               </div>
-              <div className="bg-emerald-500/10 text-emerald-400 font-bold px-3 py-1 rounded border border-emerald-500/20 font-mono text-sm">
-                +{evt.delta} Score
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
