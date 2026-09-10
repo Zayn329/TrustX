@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Network, ZoomIn, ZoomOut, RotateCcw, ArrowLeft } from 'lucide-react';
+import { Network, ZoomIn, ZoomOut, RotateCcw, ArrowLeft, Download, Filter } from 'lucide-react';
 import { useTrust } from '../../store/TrustContext';
 
 interface Node {
@@ -22,9 +22,35 @@ export const GraphView: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
 
+  // Category H Item 77: Filter Toggles
+  const [visibleTypes, setVisibleTypes] = useState<Record<string, boolean>>({
+    identity: true,
+    bounty: true,
+    escrow: true,
+    contribution: true,
+    proof: true
+  });
+
   const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.2, 1.8));
   const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.2, 0.6));
   const handleResetZoom = () => setZoomLevel(1);
+
+  const toggleType = (type: string) => {
+    setVisibleTypes(prev => ({ ...prev, [type]: !prev[type] }));
+  };
+
+  const handleExportSVG = () => {
+    const svgElement = document.getElementById('trust-graph-svg');
+    if (!svgElement) return;
+    const svgData = new XMLSerializer().serializeToString(svgElement);
+    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    const downloadLink = document.createElement('a');
+    downloadLink.href = url;
+    downloadLink.download = `trust_graph_${Date.now()}.svg`;
+    downloadLink.click();
+    URL.revokeObjectURL(url);
+  };
 
   const nodes: Node[] = [
     {
@@ -69,6 +95,8 @@ export const GraphView: React.FC = () => {
     }
   ];
 
+  const filteredNodes = nodes.filter(n => visibleTypes[n.type]);
+
   const edges: Edge[] = [
     { source: nodes[0].id, target: nodes[3].id, label: 'Submitted' },
     { source: nodes[1].id, target: nodes[2].id, label: 'Locked Funds' },
@@ -112,8 +140,17 @@ export const GraphView: React.FC = () => {
           </p>
         </div>
 
-        {/* Zoom & Pan Controls (Issue 20) */}
+        {/* Zoom & Export Controls (Category H Items 73, 80) */}
         <div className="flex items-center gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800 text-xs">
+          <button
+            onClick={handleExportSVG}
+            className="p-2 hover:bg-slate-800 text-emerald-400 rounded-lg transition-colors flex items-center gap-1 font-semibold"
+            title="Export Graph Image"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Export SVG</span>
+          </button>
+          <div className="w-px h-5 bg-slate-800" />
           <button
             onClick={handleZoomIn}
             className="p-2 hover:bg-slate-800 text-slate-300 rounded-lg transition-colors flex items-center gap-1 font-semibold"
@@ -143,16 +180,48 @@ export const GraphView: React.FC = () => {
         </div>
       </div>
 
+      {/* Graph Filters & Legend (Category H Items 77, 79) */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2 text-slate-400 font-semibold">
+          <Filter className="w-4 h-4 text-indigo-400" />
+          <span>Toggle Node Types:</span>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {[
+            { key: 'identity', label: 'Identities', color: '#10b981' },
+            { key: 'bounty', label: 'Bounties', color: '#6366f1' },
+            { key: 'escrow', label: 'Escrows', color: '#f59e0b' },
+            { key: 'contribution', label: 'Reports', color: '#38bdf8' },
+            { key: 'proof', label: 'Proofs', color: '#a855f7' },
+          ].map(item => (
+            <button
+              key={item.key}
+              onClick={() => toggleType(item.key)}
+              className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                visibleTypes[item.key]
+                  ? 'bg-slate-950 text-slate-200 border-slate-700'
+                  : 'bg-slate-950/40 text-slate-600 border-slate-900 line-through'
+              }`}
+            >
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-2xl p-4 relative overflow-hidden flex flex-col items-center justify-center min-h-[420px] shadow-sm">
           <svg
+            id="trust-graph-svg"
             viewBox="0 0 720 360"
             className="w-full h-full max-h-[420px] transition-transform duration-300"
             style={{ transform: `scale(${zoomLevel})` }}
           >
             {edges.map((edge, idx) => {
-              const sourceNode = nodes.find(n => n.id === edge.source);
-              const targetNode = nodes.find(n => n.id === edge.target);
+              const sourceNode = filteredNodes.find(n => n.id === edge.source);
+              const targetNode = filteredNodes.find(n => n.id === edge.target);
               if (!sourceNode || !targetNode) return null;
 
               const midX = (sourceNode.x + targetNode.x) / 2;
@@ -169,7 +238,6 @@ export const GraphView: React.FC = () => {
                     strokeWidth="2.5"
                     strokeDasharray="4 4"
                   />
-                  {/* High Contrast Line Badge (Issue 21) */}
                   <rect
                     x={midX - 45}
                     y={midY - 11}
@@ -195,7 +263,7 @@ export const GraphView: React.FC = () => {
               );
             })}
 
-            {nodes.map(node => {
+            {filteredNodes.map(node => {
               const isSelected = selectedNode?.id === node.id;
               const color = getNodeColor(node.type);
 

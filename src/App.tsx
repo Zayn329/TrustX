@@ -10,6 +10,9 @@ import { GraphView } from './components/views/GraphView';
 import { NetworkView } from './components/views/NetworkView';
 import { CommandPalette } from './components/ui/CommandPalette';
 import { ScrollToTop } from './components/ui/ScrollToTop';
+import { ToastContainer } from './components/ui/ToastContainer';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import { OnboardingTour } from './components/ui/OnboardingTour';
 import { ChevronRight, Home } from 'lucide-react';
 
 export function App() {
@@ -80,47 +83,51 @@ export function App() {
 
   return (
     <TrustProvider>
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
-        <Header onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} />
+      <ErrorBoundary>
+        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+          <Header onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} />
 
-        <div className="flex flex-1 w-full relative">
-          {/* Sidebar Workspace Navigation */}
-          <Navbar
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            isCollapsed={isSidebarCollapsed}
-            setIsCollapsed={setIsSidebarCollapsed}
-          />
+          <div className="flex flex-1 w-full relative">
+            {/* Sidebar Workspace Navigation */}
+            <Navbar
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              isCollapsed={isSidebarCollapsed}
+              setIsCollapsed={setIsSidebarCollapsed}
+            />
 
-          {/* Main Content Workspace Container */}
-          <div className="flex-1 flex flex-col min-w-0">
-            {/* Breadcrumb Navigation Trail Bar */}
-            <div className="bg-slate-900/60 border-b border-slate-800/80 px-4 sm:px-6 lg:px-8 py-2.5 flex items-center gap-2 text-xs text-slate-400">
-              <button
-                onClick={() => setActiveTab('dashboard')}
-                className="hover:text-slate-200 flex items-center gap-1.5 transition-colors"
-              >
-                <Home className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Trust Engine</span>
-              </button>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
-              <span className="text-slate-200 font-semibold">{viewLabels[activeTab]}</span>
+            {/* Main Content Workspace Container */}
+            <div className="flex-1 flex flex-col min-w-0">
+              {/* Breadcrumb Navigation Trail Bar */}
+              <div className="bg-slate-900/60 border-b border-slate-800/80 px-4 sm:px-6 lg:px-8 py-2.5 flex items-center gap-2 text-xs text-slate-400">
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className="hover:text-slate-200 flex items-center gap-1.5 transition-colors"
+                >
+                  <Home className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Trust Engine</span>
+                </button>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
+                <span className="text-slate-200 font-semibold">{viewLabels[activeTab]}</span>
+              </div>
+
+              <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {renderActiveView()}
+              </main>
             </div>
-
-            <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              {renderActiveView()}
-            </main>
           </div>
-        </div>
 
-        {/* Floating Utilities */}
-        <ScrollToTop />
-        <CommandPalette
-          isOpen={isCommandPaletteOpen}
-          onClose={() => setIsCommandPaletteOpen(false)}
-          onNavigate={(tab) => setActiveTab(tab)}
-        />
-      </div>
+          {/* Floating Utilities, Tour & Toasts */}
+          <OnboardingTour />
+          <ToastContainer />
+          <ScrollToTop />
+          <CommandPalette
+            isOpen={isCommandPaletteOpen}
+            onClose={() => setIsCommandPaletteOpen(false)}
+            onNavigate={(tab) => setActiveTab(tab)}
+          />
+        </div>
+      </ErrorBoundary>
     </TrustProvider>
   );
 }

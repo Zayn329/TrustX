@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Award, Lock, FileCheck, ArrowRight, CheckCircle2, ShieldAlert, Cpu, Copy, Check } from 'lucide-react';
+import { ShieldCheck, Award, Lock, FileCheck, ArrowRight, CheckCircle2, ShieldAlert, Cpu, Copy, Check, ArrowUpDown } from 'lucide-react';
 import { useTrust } from '../../store/TrustContext';
 
 interface DashboardViewProps {
@@ -9,6 +9,8 @@ interface DashboardViewProps {
 export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
   const { currentResearcher, reports, proofs, verifications, escrows } = useTrust();
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<'title' | 'severity'>('title');
+  const [sortAsc, setSortAsc] = useState(true);
 
   const totalRewardsLocked = escrows.reduce((sum, e) => (e.status === 'locked' ? sum + e.amount : sum), 0);
   const totalRewardsReleased = escrows.reduce((sum, e) => (e.status === 'released' ? sum + e.amount : sum), 0);
@@ -18,6 +20,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
     setCopiedHash(hash);
     setTimeout(() => setCopiedHash(null), 2000);
   };
+
+  const handleSort = (field: 'title' | 'severity') => {
+    if (sortField === field) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortField(field);
+      setSortAsc(true);
+    }
+  };
+
+  const sortedReports = [...reports].sort((a, b) => {
+    if (sortField === 'title') {
+      return sortAsc ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title);
+    } else {
+      return sortAsc ? a.severity.localeCompare(b.severity) : b.severity.localeCompare(a.severity);
+    }
+  });
 
   return (
     <div className="space-y-8">
@@ -152,8 +171,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* Recent Submissions & Proofs Table (Issue 12) */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+      {/* Recent Submissions & Proofs Table with Column Header Sorting (Category F Item 51) */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-bold text-slate-200">Recent Proof-Anchored Submissions</h2>
           <button
@@ -168,15 +187,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-slate-800 text-slate-400 font-medium uppercase tracking-wider">
-                <th className="py-3 px-4">Report / Vulnerability</th>
-                <th className="py-3 px-4">Severity</th>
+                <th
+                  onClick={() => handleSort('title')}
+                  className="py-3 px-4 cursor-pointer hover:text-white transition-colors"
+                >
+                  <div className="flex items-center gap-1">
+                    <span>Report / Vulnerability</span>
+                    <ArrowUpDown className="w-3 h-3 text-indigo-400" />
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort('severity')}
+                  className="py-3 px-4 cursor-pointer hover:text-white transition-colors"
+                >
+                  <div className="flex items-center gap-1">
+                    <span>Severity</span>
+                    <ArrowUpDown className="w-3 h-3 text-indigo-400" />
+                  </div>
+                </th>
                 <th className="py-3 px-4">SHA-256 Proof Hash</th>
                 <th className="py-3 px-4">Technical Verification</th>
                 <th className="py-3 px-4">Escrow Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-300">
-              {reports.map(report => {
+              {sortedReports.map(report => {
                 const proof = proofs.find(p => p.contributionId === report.id);
                 const verification = verifications.find(v => v.contributionId === report.id);
 
@@ -187,7 +222,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                       <div className="text-[10px] text-slate-500 font-mono mt-0.5">{report.id}</div>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
                         {report.severity}
                       </span>
                     </td>
@@ -213,7 +248,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                     </td>
                     <td className="py-3 px-4">
                       <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-medium border ${
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium border ${
                           verification?.status === 'valid'
                             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                             : verification?.status === 'pending'
