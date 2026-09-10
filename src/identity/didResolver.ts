@@ -61,3 +61,34 @@ export function resolveDid(did: string): W3cDidDocument {
     assertionMethod: [keyId]
   };
 }
+
+/**
+ * Async Universal DID Resolver:
+ * Attempts real HTTP lookup against W3C Universal Resolver endpoint (`https://uniresolver.io/1.0/identifiers/${did}`).
+ * If unconfigured, unreachable, or timing out, gracefully falls back to local JWK resolution (`resolveDid`).
+ */
+export async function resolveDidAsync(did: string): Promise<W3cDidDocument> {
+  const resolverUrl = typeof process !== 'undefined' && process.env?.VITE_DID_RESOLVER_URL
+    ? process.env.VITE_DID_RESOLVER_URL
+    : (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_DID_RESOLVER_URL;
+
+  if (resolverUrl) {
+    try {
+      const response = await fetch(`${resolverUrl}/${did}`, {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(1200)
+      });
+
+      if (response.ok) {
+        const doc = await response.json();
+        if (doc && doc.didDocument) {
+          return doc.didDocument as W3cDidDocument;
+        }
+      }
+    } catch {
+      // Unreachable or offline — catch silently and fall back to local DID document generation
+    }
+  }
+
+  return resolveDid(did);
+}
