@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import { useTrust } from './TrustContext';
 import { BlockchainEvent } from '../domain/types';
 
-export const SUBGRAPH_ENDPOINT = 'https://api.studio.thegraph.com/query/trust-engine/v1.0.0';
+const envSubgraph = typeof process !== 'undefined' && process.env?.VITE_SUBGRAPH_ENDPOINT
+  ? process.env.VITE_SUBGRAPH_ENDPOINT
+  : (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_SUBGRAPH_ENDPOINT;
+
+export const SUBGRAPH_ENDPOINT = envSubgraph || 'https://api.studio.thegraph.com/query/trust-engine/v1.0.0';
 
 export async function querySubgraphEvents(endpoint: string = SUBGRAPH_ENDPOINT): Promise<BlockchainEvent[] | null> {
   const query = `

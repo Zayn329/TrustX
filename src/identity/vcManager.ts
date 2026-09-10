@@ -110,7 +110,36 @@ export function issueTrustScoreCredential(
   };
 }
 
+/**
+ * Dual-Mode Credential Verification Engine:
+ * Attempts verification via remote W3C VC Verifier service endpoint if configured in environment (`VITE_VC_VERIFIER_URL`).
+ * If unconfigured, unreachable, or timing out, gracefully falls back to local JWS structural & schema verification.
+ */
 export async function verifyCredential(vc: VerifiableCredential): Promise<VerificationResult> {
+  const verifierUrl = typeof process !== 'undefined' && process.env?.VITE_VC_VERIFIER_URL
+    ? process.env.VITE_VC_VERIFIER_URL
+    : (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_VC_VERIFIER_URL;
+
+  if (verifierUrl) {
+    try {
+      const response = await fetch(`${verifierUrl}/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: vc }),
+        signal: AbortSignal.timeout(1200)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result && typeof result.isValid === 'boolean') {
+          return result as VerificationResult;
+        }
+      }
+    } catch {
+      // Unreachable or offline verifier service — fall back silently to local verification
+    }
+  }
+
   const errors: string[] = [];
 
   if (!vc['@context'] || !vc['@context'].includes('https://www.w3.org/2018/credentials/v1')) {

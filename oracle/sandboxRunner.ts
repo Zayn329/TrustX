@@ -8,10 +8,35 @@ export interface SandboxExecutionResult {
 }
 
 /**
- * Real JavaScript/Regex static & dynamic PoC evaluation engine.
- * Analyzes reproduction steps for exploit assertions, state changes, and reentrancy vectors.
+ * Dual-Mode PoC Evaluation Engine:
+ * Attempts real HTTP execution via remote Oracle Sandbox service endpoint (VITE_ORACLE_SERVICE_URL).
+ * If unconfigured, unreachable, or timing out, gracefully falls back to local AST & regex static evaluation engine.
  */
 export async function runSandboxEvaluation(reproductionSteps: string): Promise<SandboxExecutionResult> {
+  const oracleUrl = typeof process !== 'undefined' && process.env?.VITE_ORACLE_SERVICE_URL
+    ? process.env.VITE_ORACLE_SERVICE_URL
+    : (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_ORACLE_SERVICE_URL;
+
+  if (oracleUrl) {
+    try {
+      const response = await fetch(`${oracleUrl}/evaluate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reproductionSteps }),
+        signal: AbortSignal.timeout(1200)
+      });
+
+      if (response.ok) {
+        const remoteResult = await response.json();
+        if (remoteResult && remoteResult.executionId) {
+          return remoteResult as SandboxExecutionResult;
+        }
+      }
+    } catch {
+      // Backend unconfigured, down, or timing out — catch error silently and proceed to local fallback
+    }
+  }
+
   const now = new Date().toISOString();
   await new Promise(res => setTimeout(res, 200));
 

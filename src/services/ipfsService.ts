@@ -76,19 +76,24 @@ export async function uploadToIpfs(
   // Formulate CIDv1 base32 specification string
   const cid = `bafybeig${cleanHash.slice(0, 32)}`;
 
-  // Attempt Pinata JWT API pinning if key provided
-  if (options?.pinataJwt) {
+  // Attempt Pinata JWT API pinning if key provided via options or env
+  const jwt = options?.pinataJwt || (typeof process !== 'undefined' && process.env?.VITE_PINATA_JWT
+    ? process.env.VITE_PINATA_JWT
+    : (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_PINATA_JWT);
+
+  if (jwt) {
     try {
       const response = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${options.pinataJwt}`
+          Authorization: `Bearer ${jwt}`
         },
         body: JSON.stringify({
           pinataContent: { payload: finalPayload, cid },
           pinataMetadata: { name: `Proof-${cid.slice(0, 8)}` }
-        })
+        }),
+        signal: AbortSignal.timeout(1500)
       });
 
       if (response.ok) {
