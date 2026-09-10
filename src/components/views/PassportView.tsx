@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserCheck, Key, Award, QrCode } from 'lucide-react';
+import { UserCheck, Key, Award, QrCode, ArrowLeft, ShieldAlert } from 'lucide-react';
 import { useTrust } from '../../store/TrustContext';
 import { PortableReputationDiagram } from '../passport/PortableReputationDiagram';
 import { ScoreBreakdown } from '../passport/ScoreBreakdown';
@@ -19,9 +19,16 @@ export const PassportView: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Header Profile Card */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm">
         <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold text-xl">
+          <button
+            onClick={() => { window.location.hash = '#dashboard'; }}
+            className="p-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition-colors"
+            title="Back to Dashboard Overview"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold text-xl flex-shrink-0">
             <UserCheck className="w-8 h-8" />
           </div>
           <div>
@@ -69,35 +76,50 @@ export const PassportView: React.FC = () => {
       {/* Portable Reputation Model */}
       <PortableReputationDiagram />
 
-      {/* Score Breakdown */}
+      {/* Score Breakdown (Issue 22) */}
       <ScoreBreakdown
         factors={currentResearcher.reputationFactors}
         totalScore={currentResearcher.trustScore}
       />
 
-      {/* Verified On-Chain Reputation History */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+      {/* Verified On-Chain Reputation History (Issue 23) */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
         <h3 className="text-sm font-bold text-slate-200 mb-4">On-Chain Reputation Event Log</h3>
         <div className="space-y-3">
-          {reputationEvents.map(evt => (
-            <div
-              key={evt.id}
-              className="bg-slate-950 p-4 rounded-lg border border-slate-800/80 flex items-center justify-between text-xs"
-            >
-              <div className="space-y-1">
-                <div className="font-semibold text-slate-200 flex items-center gap-2">
-                  <Award className="w-4 h-4 text-emerald-400" />
-                  <span>{evt.reason}</span>
+          {reputationEvents.map(evt => {
+            const isPositive = evt.delta >= 0;
+
+            return (
+              <div
+                key={evt.id}
+                className="bg-slate-950 p-4 rounded-xl border border-slate-800/80 flex items-center justify-between text-xs transition-all hover:bg-slate-900/60"
+              >
+                <div className="space-y-1">
+                  <div className="font-semibold text-slate-200 flex items-center gap-2">
+                    {isPositive ? (
+                      <Award className="w-4 h-4 text-emerald-400" />
+                    ) : (
+                      <ShieldAlert className="w-4 h-4 text-rose-400" />
+                    )}
+                    <span>{evt.reason}</span>
+                  </div>
+                  <div className="font-mono text-[10px] text-slate-500">
+                    Tx: {evt.txHash} • {new Date(evt.timestamp).toLocaleString()}
+                  </div>
                 </div>
-                <div className="font-mono text-[10px] text-slate-500">
-                  Tx: {evt.txHash} • {new Date(evt.timestamp).toLocaleString()}
+
+                <div
+                  className={`font-bold px-3 py-1 rounded-lg border font-mono text-xs ${
+                    isPositive
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                      : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                  }`}
+                >
+                  {isPositive ? `+${evt.delta}` : evt.delta} Score
                 </div>
               </div>
-              <div className="bg-emerald-500/10 text-emerald-400 font-bold px-3 py-1 rounded border border-emerald-500/20 font-mono text-sm">
-                +{evt.delta} Score
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

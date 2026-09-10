@@ -107,7 +107,7 @@ export function App() {
               <span className="text-slate-200 font-semibold">{viewLabels[activeTab]}</span>
             </div>
 
-            <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
               {renderActiveView()}
             </main>
           </div>

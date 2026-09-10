@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Target, Search, RotateCcw, ArrowLeft } from 'lucide-react';
+import { Target, Search, RotateCcw, ArrowLeft, X } from 'lucide-react';
 import { useTrust } from '../../store/TrustContext';
 import { BountyCard } from '../bounties/BountyCard';
 import { BountyDetailModal } from '../bounties/BountyDetailModal';
@@ -97,6 +97,31 @@ export const BountiesView: React.FC = () => {
             </button>
           )}
         </div>
+      </div>
+
+      {/* Count Summary & Filter Pills (Issue 13) */}
+      <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 border-b border-slate-800/80 pb-3 gap-2">
+        <div className="font-semibold text-slate-300">
+          Showing <span className="text-indigo-400 font-bold">{filteredBounties.length}</span> of {bounties.length} active bounties
+        </div>
+
+        {(searchTerm !== '' || selectedSeverity !== 'all') && (
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-slate-500">Active Filters:</span>
+            {searchTerm && (
+              <span className="bg-indigo-500/10 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/20 font-mono flex items-center gap-1">
+                Search: "{searchTerm}"
+                <button onClick={() => setSearchTerm('')}><X className="w-3 h-3 hover:text-white" /></button>
+              </span>
+            )}
+            {selectedSeverity !== 'all' && (
+              <span className="bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded border border-amber-500/20 font-mono flex items-center gap-1 capitalize">
+                Severity: {selectedSeverity}
+                <button onClick={() => setSelectedSeverity('all')}><X className="w-3 h-3 hover:text-white" /></button>
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Grid */}
