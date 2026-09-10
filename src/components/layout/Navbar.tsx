@@ -1,51 +1,227 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   LayoutDashboard,
   Target,
   UserCheck,
   Search,
   Network,
-  Activity
+  Activity,
+  ChevronLeft,
+  ChevronRight,
+  Menu,
+  X,
+  ShieldCheck
 } from 'lucide-react';
+import { useTrust } from '../../store/TrustContext';
 
 export type ViewTab = 'dashboard' | 'bounties' | 'passport' | 'explorer' | 'graph' | 'network';
 
 interface NavbarProps {
   activeTab: ViewTab;
   setActiveTab: (tab: ViewTab) => void;
+  isCollapsed?: boolean;
+  setIsCollapsed?: (collapsed: boolean) => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
-  const navItems: { id: ViewTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
-    { id: 'bounties', label: 'Bounty Marketplace', icon: <Target className="w-4 h-4" /> },
-    { id: 'passport', label: 'Trust Passport', icon: <UserCheck className="w-4 h-4" /> },
-    { id: 'explorer', label: 'Contribution Explorer', icon: <Search className="w-4 h-4" /> },
-    { id: 'graph', label: 'Trust Graph', icon: <Network className="w-4 h-4" /> },
-    { id: 'network', label: 'Network & Ledger', icon: <Activity className="w-4 h-4" /> },
+export const Navbar: React.FC<NavbarProps> = ({
+  activeTab,
+  setActiveTab,
+  isCollapsed = false,
+  setIsCollapsed
+}) => {
+  const { bounties, blockchainEvents, reports } = useTrust();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const navItems: {
+    id: ViewTab;
+    label: string;
+    icon: React.ReactNode;
+    badge?: number | string;
+    description: string;
+  }[] = [
+    {
+      id: 'dashboard',
+      label: 'Dashboard',
+      icon: <LayoutDashboard className="w-5 h-5 flex-shrink-0" />,
+      description: 'Overview & metrics'
+    },
+    {
+      id: 'bounties',
+      label: 'Bounty Marketplace',
+      icon: <Target className="w-5 h-5 flex-shrink-0" />,
+      badge: bounties.length,
+      description: 'Active Escrow Bounties'
+    },
+    {
+      id: 'passport',
+      label: 'Trust Passport',
+      icon: <UserCheck className="w-5 h-5 flex-shrink-0" />,
+      description: 'W3C VCs & Reputation'
+    },
+    {
+      id: 'explorer',
+      label: 'Contribution Explorer',
+      icon: <Search className="w-5 h-5 flex-shrink-0" />,
+      badge: reports.length,
+      description: 'SHA-256 Audit Trail'
+    },
+    {
+      id: 'graph',
+      label: 'Trust Graph',
+      icon: <Network className="w-5 h-5 flex-shrink-0" />,
+      description: 'Interactive Proof Net'
+    },
+    {
+      id: 'network',
+      label: 'Network & Ledger',
+      icon: <Activity className="w-5 h-5 flex-shrink-0" />,
+      badge: blockchainEvents.length,
+      description: 'Live Event Logs & Jury'
+    },
   ];
 
+  const handleTabClick = (id: ViewTab) => {
+    setActiveTab(id);
+    setMobileOpen(false);
+  };
+
   return (
-    <nav className="bg-slate-900/90 border-b border-slate-800 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1 overflow-x-auto scrollbar-none py-2">
-        {navItems.map(item => {
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap ${
-                isActive
-                  ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
+    <>
+      {/* Mobile Top Navigation Bar Toggle */}
+      <div className="lg:hidden bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between sticky top-16 z-30">
+        <button
+          onClick={() => setMobileOpen(!mobileOpen)}
+          aria-label="Toggle Menu"
+          className="inline-flex items-center gap-2 text-slate-300 hover:text-white bg-slate-800 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-700"
+        >
+          {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          <span>Workspace Menu</span>
+        </button>
+        <div className="text-xs font-semibold text-indigo-400 capitalize">
+          {navItems.find(i => i.id === activeTab)?.label}
+        </div>
       </div>
-    </nav>
+
+      {/* Desktop Sidebar Container */}
+      <aside
+        className={`hidden lg:flex flex-col bg-slate-900/95 border-r border-slate-800 transition-all duration-300 sticky top-16 h-[calc(100vh-4rem)] z-30 select-none ${
+          isCollapsed ? 'w-20' : 'w-64'
+        }`}
+      >
+        {/* Navigation Section */}
+        <div className="flex-1 py-4 px-3 space-y-1.5 overflow-y-auto">
+          {!isCollapsed && (
+            <div className="px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">
+              Protocol Navigation
+            </div>
+          )}
+
+          {navItems.map(item => {
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleTabClick(item.id)}
+                title={isCollapsed ? item.label : undefined}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all group ${
+                  isActive
+                    ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-lg shadow-indigo-600/10'
+                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 border border-transparent'
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`${isActive ? 'text-indigo-400' : 'text-slate-400 group-hover:text-slate-200'}`}>
+                    {item.icon}
+                  </div>
+                  {!isCollapsed && (
+                    <div className="text-left truncate">
+                      <div className="font-semibold leading-tight truncate">{item.label}</div>
+                      <div className="text-[10px] text-slate-500 group-hover:text-slate-400 truncate">{item.description}</div>
+                    </div>
+                  )}
+                </div>
+
+                {!isCollapsed && item.badge !== undefined && (
+                  <span
+                    className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                      isActive
+                        ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+                        : 'bg-slate-800 text-slate-400 border-slate-700'
+                    }`}
+                  >
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Sidebar Footer Collapse Toggle */}
+        <div className="p-3 border-t border-slate-800/80 bg-slate-950/40">
+          <button
+            onClick={() => setIsCollapsed && setIsCollapsed(!isCollapsed)}
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 rounded-lg transition-all"
+          >
+            {isCollapsed ? (
+              <ChevronRight className="w-4 h-4 text-indigo-400" />
+            ) : (
+              <>
+                <ChevronLeft className="w-4 h-4 text-indigo-400" />
+                <span>Collapse Sidebar</span>
+              </>
+            )}
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile Slide-Over Drawer Overlay */}
+      {mobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex">
+          <div className="bg-slate-900 border-r border-slate-800 w-72 max-w-[80%] h-full p-4 flex flex-col space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-indigo-400" />
+                <span className="font-bold text-slate-100 text-sm">Trust Engine Navigation</span>
+              </div>
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="text-slate-400 hover:text-white p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 space-y-1.5 overflow-y-auto">
+              {navItems.map(item => {
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleTabClick(item.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                      isActive
+                        ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
+                        : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {item.icon}
+                      <span className="font-semibold">{item.label}</span>
+                    </div>
+                    {item.badge !== undefined && (
+                      <span className="bg-slate-800 text-slate-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-700">
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex-1" onClick={() => setMobileOpen(false)} />
+        </div>
+      )}
+    </>
   );
 };

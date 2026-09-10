@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Target, Search } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Target, Search, RotateCcw, ArrowLeft } from 'lucide-react';
 import { useTrust } from '../../store/TrustContext';
 import { BountyCard } from '../bounties/BountyCard';
 import { BountyDetailModal } from '../bounties/BountyDetailModal';
@@ -8,8 +8,25 @@ import { Bounty } from '../../domain/types';
 export const BountiesView: React.FC = () => {
   const { bounties } = useTrust();
   const [selectedBounty, setSelectedBounty] = useState<Bounty | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSeverity, setSelectedSeverity] = useState<string>('all');
+
+  // Category A Item 7: Filter State Memory with sessionStorage
+  const [searchTerm, setSearchTerm] = useState(() => sessionStorage.getItem('bounty_search') || '');
+  const [selectedSeverity, setSelectedSeverity] = useState(() => sessionStorage.getItem('bounty_severity') || 'all');
+
+  useEffect(() => {
+    sessionStorage.setItem('bounty_search', searchTerm);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    sessionStorage.setItem('bounty_severity', selectedSeverity);
+  }, [selectedSeverity]);
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setSelectedSeverity('all');
+    sessionStorage.removeItem('bounty_search');
+    sessionStorage.removeItem('bounty_severity');
+  };
 
   const filteredBounties = bounties.filter(bounty => {
     const matchesSearch =
@@ -29,6 +46,13 @@ export const BountiesView: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => { window.location.hash = '#dashboard'; }}
+              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors"
+              title="Back to Dashboard Overview"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
             <Target className="w-6 h-6 text-indigo-400" />
             <h1 className="text-2xl font-bold text-slate-100">Bug Bounty Marketplace</h1>
           </div>
@@ -61,6 +85,17 @@ export const BountiesView: React.FC = () => {
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
+
+          {(searchTerm !== '' || selectedSeverity !== 'all') && (
+            <button
+              onClick={resetFilters}
+              title="Reset Filters"
+              className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 text-xs flex items-center gap-1 transition-all"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Reset</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -76,8 +111,15 @@ export const BountiesView: React.FC = () => {
       </div>
 
       {filteredBounties.length === 0 && (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center text-slate-400">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center text-slate-400 space-y-3">
           <p className="text-sm">No bounties matching search criteria found.</p>
+          <button
+            onClick={resetFilters}
+            className="inline-flex items-center gap-2 text-xs text-indigo-400 hover:text-indigo-300 font-semibold"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Clear Search & Filters</span>
+          </button>
         </div>
       )}
 

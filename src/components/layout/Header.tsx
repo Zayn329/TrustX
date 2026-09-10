@@ -1,11 +1,27 @@
-import React, { useState } from 'react';
-import { ShieldCheck, Cpu, KeyRound, Wallet } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShieldCheck, Cpu, KeyRound, Wallet, Search } from 'lucide-react';
 import { useTrust } from '../../store/TrustContext';
 import { WalletModal } from '../blockchain/WalletModal';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  onOpenCommandPalette?: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onOpenCommandPalette }) => {
   const { currentResearcher } = useTrust();
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+
+  // Global Keyboard Listener for Cmd+K / Ctrl+K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        onOpenCommandPalette?.();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onOpenCommandPalette]);
 
   return (
     <>
@@ -26,7 +42,19 @@ export const Header: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
+            {/* Cmd+K Quick Search Trigger Button */}
+            <button
+              onClick={onOpenCommandPalette}
+              className="hidden sm:inline-flex items-center gap-2 bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 px-3 py-1.5 rounded-xl text-xs transition-all"
+            >
+              <Search className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Quick Search...</span>
+              <kbd className="font-mono text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400 border border-slate-700">
+                ⌘K
+              </kbd>
+            </button>
+
             <button
               onClick={() => setIsWalletModalOpen(true)}
               className="inline-flex items-center gap-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
