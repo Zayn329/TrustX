@@ -80,11 +80,12 @@ export function useEscrowContract() {
 
     if (typeof window !== 'undefined' && window.ethereum && wallet.isConnected) {
       try {
+        const contractAddress = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_TRUST_BOUNTY_ESCROW_ADDRESS || '0x1111111111111111111111111111111111111111';
         const domain = {
           name: 'Trust Engine Protocol',
           version: '1.0',
           chainId: SEPOLIA_CONFIG.chainId,
-          verifyingContract: '0x1111111111111111111111111111111111111111'
+          verifyingContract: contractAddress
         };
 
         const types = {
@@ -124,6 +125,10 @@ export function useEscrowContract() {
   const releaseEscrowOnChain = async (_escrowContractAddress: string, _amount: number) => {
     setIsPending(true);
 
+    const targetAddress = _escrowContractAddress.startsWith('0x') && _escrowContractAddress.length === 42
+      ? _escrowContractAddress
+      : (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_TRUST_BOUNTY_ESCROW_ADDRESS || '0x1111111111111111111111111111111111111111';
+
     if (typeof window !== 'undefined' && window.ethereum && wallet.isConnected) {
       try {
         const txHash = (await window.ethereum.request({
@@ -131,7 +136,7 @@ export function useEscrowContract() {
           params: [
             {
               from: wallet.address,
-              to: _escrowContractAddress,
+              to: targetAddress,
               value: '0x0'
             }
           ]
@@ -143,11 +148,11 @@ export function useEscrowContract() {
           txHash
         };
       } catch (err) {
-        console.warn('On-chain transaction execution failed, utilizing fallback RPC simulation:', err);
+        console.warn('On-chain transaction execution failed or rejected, utilizing fallback RPC simulation:', err);
       }
     }
 
-    // Fallback RPC transaction simulation for seamless demo
+    // Fallback RPC transaction simulation for seamless demo execution
     await new Promise(res => setTimeout(res, 300));
     setIsPending(false);
 
