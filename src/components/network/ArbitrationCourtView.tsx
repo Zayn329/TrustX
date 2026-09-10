@@ -13,11 +13,11 @@ export const ArbitrationCourtView: React.FC = () => {
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-sm relative">
+    <div className="tx-surface rounded-2xl p-6 space-y-4 shadow-sm relative sm:p-7">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Scale className="w-5 h-5 text-indigo-400" />
-          <h3 className="text-sm font-bold text-slate-200">Decentralized Juror Arbitration Court</h3>
+          <Scale className="w-5 h-5 text-blue-300" />
+          <div><div className="tx-kicker text-blue-300/70">Challenge → decision → outcome</div><h3 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-white">Arbitration court</h3></div>
         </div>
         <span className="text-[10px] font-mono text-indigo-400 bg-indigo-500/10 px-2.5 py-0.5 rounded-full border border-indigo-500/20 font-semibold">
           Staked Juror Consensus
@@ -33,7 +33,7 @@ export const ArbitrationCourtView: React.FC = () => {
 
       <div className="space-y-3">
         {cases.map(c => (
-          <div key={c.disputeId} className="bg-slate-950 p-4 rounded-xl border border-slate-800/80 text-xs space-y-3">
+          <div key={c.disputeId} className="bg-slate-950/55 p-5 rounded-2xl border border-slate-700/40 text-xs space-y-4">
             <div className="flex items-center justify-between">
               <span className="font-bold text-slate-100">{c.title}</span>
               <span

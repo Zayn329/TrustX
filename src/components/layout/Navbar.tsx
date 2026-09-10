@@ -88,31 +88,31 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <>
       {/* Mobile Top Navigation Bar Toggle */}
-      <div className="lg:hidden bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between sticky top-16 z-30">
+      <div className="lg:hidden bg-[#080d18] border-b border-slate-700/40 px-4 py-3 flex items-center justify-between sticky top-[4.5rem] z-30">
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label="Toggle Menu"
-          className="inline-flex items-center gap-2 text-slate-300 hover:text-white bg-slate-800 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-700"
+          className="inline-flex items-center gap-2 text-slate-300 hover:text-white bg-slate-800/80 px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700/60"
         >
           {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           <span>Workspace Menu</span>
         </button>
-        <div className="text-xs font-semibold text-indigo-400 capitalize">
+        <div className="text-[11px] font-semibold text-blue-300 capitalize">
           {navItems.find(i => i.id === activeTab)?.label}
         </div>
       </div>
 
       {/* Desktop Sidebar Container */}
       <aside
-        className={`hidden lg:flex flex-col bg-slate-900/95 border-r border-slate-800 transition-all duration-300 sticky top-16 h-[calc(100vh-4rem)] z-30 select-none ${
+        className={`hidden lg:flex flex-col bg-[#080d18]/92 border-r border-slate-700/40 transition-all duration-300 sticky top-[4.5rem] h-[calc(100vh-4.5rem)] z-30 select-none ${
           isCollapsed ? 'w-20' : 'w-64'
         }`}
       >
         {/* Navigation Section */}
         <div className="flex-1 py-4 px-3 space-y-1.5 overflow-y-auto">
           {!isCollapsed && (
-            <div className="px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">
-              Protocol Navigation
+            <div className="px-3 py-3 text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-slate-600">
+              Workspace
             </div>
           )}
 
@@ -125,12 +125,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                 title={isCollapsed ? item.label : undefined}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all group ${
                   isActive
-                    ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-lg shadow-indigo-600/10'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 border border-transparent'
+                    ? 'bg-blue-400/10 text-blue-200 border border-blue-300/20 shadow-[0_8px_24px_rgba(50,120,220,0.12)]'
+                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/55 border border-transparent'
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className={`${isActive ? 'text-indigo-400' : 'text-slate-400 group-hover:text-slate-200'}`}>
+                    <div className={`${isActive ? 'text-blue-300' : 'text-slate-500 group-hover:text-slate-200'}`}>
                     {item.icon}
                   </div>
                   {!isCollapsed && (
@@ -145,8 +145,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span
                     className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                       isActive
-                        ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
-                        : 'bg-slate-800 text-slate-400 border-slate-700'
+                        ? 'bg-blue-400/15 text-blue-200 border-blue-300/25'
+                        : 'bg-slate-800/80 text-slate-400 border-slate-700/70'
                     }`}
                   >
                     {item.badge}

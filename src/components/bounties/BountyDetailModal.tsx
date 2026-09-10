@@ -30,24 +30,24 @@ export const BountyDetailModal: React.FC<BountyDetailModalProps> = ({ bounty, on
     <>
       <div
         onClick={onClose}
-        className="fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fadeIn"
+        className="fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto animate-fadeIn"
       >
         <div
           onClick={e => e.stopPropagation()}
-          className="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full p-6 sm:p-8 space-y-6 relative max-h-[90vh] flex flex-col shadow-2xl"
+          className="bg-[#0b1220] border border-slate-600/40 rounded-[1.75rem] max-w-4xl w-full p-6 sm:p-8 space-y-7 relative max-h-[90vh] flex flex-col shadow-[0_30px_100px_rgba(0,0,0,0.45)]"
         >
           {/* Header */}
           <div className="flex items-start justify-between border-b border-slate-800 pb-4">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                <ShieldCheck className="w-5 h-5 text-blue-300" />
                 <span className="text-sm font-semibold text-slate-200">{bounty.organizationName}</span>
                 <span className="bg-emerald-500/10 text-emerald-400 text-xs px-2.5 py-0.5 rounded-full border border-emerald-500/20 font-bold">
                   Organization Trust Score: {bounty.organizationTrustScore}
                 </span>
               </div>
 
-              <h1 className="text-2xl font-bold text-slate-100">{bounty.title}</h1>
+              <h1 className="text-3xl font-semibold tracking-[-0.05em] text-slate-100">{bounty.title}</h1>
             </div>
             <button
               onClick={onClose}
@@ -57,7 +57,7 @@ export const BountyDetailModal: React.FC<BountyDetailModalProps> = ({ bounty, on
             </button>
           </div>
 
-          <div className="flex flex-wrap gap-4 text-xs text-slate-400 bg-slate-950 p-3 rounded-xl border border-slate-800">
+          <div className="grid grid-cols-1 gap-3 text-xs text-slate-400 bg-slate-950/65 p-4 rounded-2xl border border-slate-700/50 sm:grid-cols-3">
             <div className="flex items-center gap-1.5">
               <DollarSign className="w-4 h-4 text-emerald-400" />
               <span>Max Reward:</span>
@@ -78,12 +78,12 @@ export const BountyDetailModal: React.FC<BountyDetailModalProps> = ({ bounty, on
           {/* Body Content Container */}
           <div className="flex-1 overflow-y-auto space-y-5 pr-1 text-xs">
             <div>
-              <h3 className="text-sm font-bold text-slate-200 mb-1">Description</h3>
-              <p className="text-slate-300 leading-relaxed bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/60">{bounty.description}</p>
+              <div className="tx-kicker">The opportunity</div>
+              <p className="mt-2 max-w-3xl text-sm text-slate-300 leading-7">{bounty.description}</p>
             </div>
 
             <div>
-              <h3 className="text-sm font-bold text-slate-200 mb-2">Scope & Covered Assets</h3>
+              <h3 className="tx-kicker mb-2">Scope & covered assets</h3>
               <div className="flex flex-wrap gap-2">
                 {bounty.scope.map((item, idx) => (
                   <span key={idx} className="bg-slate-950 text-indigo-300 font-mono text-xs px-3 py-1.5 rounded-xl border border-slate-800">
@@ -94,7 +94,7 @@ export const BountyDetailModal: React.FC<BountyDetailModalProps> = ({ bounty, on
             </div>
 
             <div>
-              <h3 className="text-sm font-bold text-slate-200 mb-2">Verification & Submission Rules</h3>
+              <h3 className="tx-kicker mb-2">Verification & submission rules</h3>
               <ul className="list-disc list-inside space-y-1.5 text-slate-300 bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/60">
                 {bounty.rules.map((rule, idx) => (
                   <li key={idx}>{rule}</li>
@@ -102,7 +102,7 @@ export const BountyDetailModal: React.FC<BountyDetailModalProps> = ({ bounty, on
               </ul>
             </div>
 
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+              <div className="bg-slate-950/55 p-4 rounded-2xl border border-slate-700/50 space-y-2">
               <div className="text-xs font-bold text-slate-200 flex items-center gap-2">
                 <Lock className="w-4 h-4 text-emerald-400" />
                 <span>Smart Contract Escrow Status</span>
@@ -125,7 +125,7 @@ export const BountyDetailModal: React.FC<BountyDetailModalProps> = ({ bounty, on
           </div>
 
           {/* Sticky Footer Actions */}
-          <div className="pt-4 border-t border-slate-800 flex justify-end space-x-3">
+          <div className="pt-5 border-t border-slate-700/40 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
             <button
               onClick={onClose}
               className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 bg-slate-800 rounded-xl"

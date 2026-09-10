@@ -37,11 +37,11 @@ export const VerificationTimeline: React.FC<VerificationTimelineProps> = ({ curr
   const activeIdx = getStageIndex(currentStage);
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
-      <h3 className="text-sm font-bold text-slate-200 mb-6">Verification Lifecycle Timeline</h3>
+    <div className="tx-surface rounded-2xl p-6 sm:p-7">
+      <div className="flex items-end justify-between gap-4"><div><div className="tx-kicker">Proof lifecycle</div><h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-white">Where the contribution stands</h3></div><span className="hidden text-xs text-slate-500 sm:block">Completed · current · next</span></div>
 
-      <div className="relative overflow-x-auto scrollbar-none pb-2">
-        <div className="flex items-center justify-between min-w-[700px] px-2">
+      <div className="relative mt-7 overflow-x-auto scrollbar-none pb-2">
+        <div className="flex min-w-[620px] items-start justify-between px-2 sm:min-w-0">
           {/* Connecting Base Line */}
           <div className="absolute top-5 left-8 right-8 h-0.5 bg-slate-800 -z-0" />
           <div
@@ -55,19 +55,19 @@ export const VerificationTimeline: React.FC<VerificationTimelineProps> = ({ curr
 
             return (
               <div key={stage.id} className="relative z-10 flex flex-col items-center group">
-                <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+              <div
+                  className={`flex h-10 w-10 items-center justify-center rounded-full transition-all ${
                     isPassed
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                      ? 'bg-blue-400 text-slate-950 shadow-lg shadow-blue-600/20'
                       : 'bg-slate-950 text-slate-600 border border-slate-800'
                   } ${isCurrent ? 'ring-4 ring-indigo-500/30 border-2 border-indigo-400 animate-pulse' : ''}`}
                 >
                   {stage.icon}
                 </div>
-                <span
+                  <span
                   className={`mt-3 text-xs whitespace-nowrap transition-colors ${
                     isCurrent
-                      ? 'text-indigo-300 font-bold'
+                      ? 'text-blue-200 font-bold'
                       : isPassed
                       ? 'text-slate-200 font-semibold'
                       : 'text-slate-500'

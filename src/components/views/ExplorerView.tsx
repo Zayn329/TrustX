@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, ArrowLeft, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, ChevronUp, Copy, FileKey2, ShieldCheck, UserRound } from 'lucide-react';
 import { useTrust } from '../../store/TrustContext';
 import { ProofCard } from '../ui/ProofCard';
 import { VerificationTimeline } from '../ui/VerificationTimeline';
@@ -11,8 +11,7 @@ export const ExplorerView: React.FC = () => {
   const [selectedReportId, setSelectedReportId] = useState<string>(reports[0]?.id || '');
   const [oracleResult, setOracleResult] = useState<SandboxExecutionResult | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
-  const [isPayloadExpanded, setIsPayloadExpanded] = useState(true);
-
+  const [isPayloadExpanded, setIsPayloadExpanded] = useState(false);
   const detailPanelRef = useRef<HTMLDivElement>(null);
 
   const activeReport = reports.find(r => r.id === selectedReportId) || reports[0];
@@ -21,17 +20,12 @@ export const ExplorerView: React.FC = () => {
   const activeResearcher = identities.find(i => i.id === activeReport?.researcherId);
 
   useEffect(() => {
-    if (activeReport) {
-      runSandboxEvaluation(activeReport.reproductionSteps).then(res => setOracleResult(res));
-    }
+    if (activeReport) runSandboxEvaluation(activeReport.reproductionSteps).then(res => setOracleResult(res));
   }, [activeReport]);
 
   const handleSelectReport = (id: string) => {
     setSelectedReportId(id);
-    // Smooth auto-scroll to audit detail panel on mobile (Issue 16)
-    if (window.innerWidth < 1024 && detailPanelRef.current) {
-      detailPanelRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (window.innerWidth < 1024 && detailPanelRef.current) detailPanelRef.current.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleCopyPayload = (text: string) => {
@@ -40,169 +34,29 @@ export const ExplorerView: React.FC = () => {
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
+  if (!activeReport) return <div className="tx-surface rounded-2xl p-10 text-center text-sm text-slate-400">No contributions are available yet.</div>;
+
+  const lifecycleStage = activeVerification?.status === 'valid' ? 'escrow_released' : activeVerification?.status === 'pending' ? 'technical_verification' : 'proof_generated';
+
   return (
-    <div className="space-y-6">
-      {/* View Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => { window.location.hash = '#dashboard'; }}
-              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors"
-              title="Back to Dashboard"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <Search className="w-6 h-6 text-indigo-400" />
-            <h1 className="text-2xl font-bold text-slate-100">Contribution Audit Explorer</h1>
-          </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Inspect end-to-end contribution audit trails: Identity → Contribution → SHA-256 Proof → Verification → Ledger Anchor → Escrow Reward.
-          </p>
-        </div>
-      </div>
+    <div className="space-y-8">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><button onClick={() => { window.location.hash = '#dashboard'; }} className="mb-5 inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-200"><ArrowLeft className="h-3.5 w-3.5" /> Back to workspace</button><div className="tx-kicker text-blue-300/80">Trust investigation / evidence center</div><h1 className="tx-page-title mt-3">Contribution audit explorer</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Follow who acted, what they contributed, what proves it, and what happened after verification.</p></div><span className="status-pill status-success"><ShieldCheck className="mr-1.5 h-3.5 w-3.5" /> Evidence register</span></header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: List of Submissions */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 h-fit">
-          <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 px-1">
-            Select Contribution
-          </h3>
-          <div className="space-y-2">
-            {reports.map(rep => {
-              const ver = verifications.find(v => v.contributionId === rep.id);
-              const isSelected = rep.id === activeReport?.id;
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="tx-surface h-fit rounded-2xl p-4 lg:sticky lg:top-28"><div className="flex items-center justify-between px-1"><div className="tx-kicker">Contributions</div><span className="font-mono text-[10px] text-slate-600">{reports.length} total</span></div><div className="mt-4 space-y-2">{reports.map(rep => { const ver = verifications.find(v => v.contributionId === rep.id); const isSelected = rep.id === activeReport.id; return <button key={rep.id} onClick={() => handleSelectReport(rep.id)} className={`w-full rounded-xl border p-3.5 text-left transition ${isSelected ? 'border-blue-300/30 bg-blue-400/10' : 'border-slate-700/40 bg-slate-950/35 hover:border-slate-500/60 hover:bg-slate-800/50'}`}><div className="flex items-center justify-between gap-2"><span className="font-mono text-[10px] font-semibold text-blue-200">{rep.id}</span><span className={`status-pill ${ver?.status === 'valid' ? 'status-success' : ver?.status === 'pending' ? 'status-warning' : 'status-critical'}`}>{ver?.status || 'pending'}</span></div><div className="mt-3 line-clamp-2 text-xs font-medium leading-5 text-slate-200">{rep.title}</div></button>; })}</div></aside>
 
-              return (
-                <button
-                  key={rep.id}
-                  onClick={() => handleSelectReport(rep.id)}
-                  className={`w-full text-left p-3.5 rounded-xl border transition-all ${
-                    isSelected
-                      ? 'bg-indigo-600/20 border-indigo-500/50 text-slate-100 shadow-md shadow-indigo-600/10'
-                      : 'bg-slate-950 border-slate-800/80 text-slate-400 hover:bg-slate-800/50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="font-mono font-bold text-indigo-300">{rep.id}</span>
-                    <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                        ver?.status === 'valid'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                          : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                      }`}
-                    >
-                      {ver?.status ? ver.status.toUpperCase() : 'PENDING'}
-                    </span>
-                  </div>
-                  <div className="text-xs font-semibold text-slate-200 line-clamp-1">{rep.title}</div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <main ref={detailPanelRef} className="min-w-0 space-y-5">
+          <section className="tx-surface-raised rounded-2xl p-6 sm:p-8"><div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between"><div className="min-w-0"><div className="tx-kicker">Selected contribution / {activeReport.id}</div><h2 className="mt-3 max-w-3xl text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl">{activeReport.title}</h2><div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-400"><span className="inline-flex items-center gap-1.5"><UserRound className="h-3.5 w-3.5 text-blue-300" /> {activeResearcher?.name || 'Researcher'}</span><span className="font-mono text-slate-600">{activeResearcher?.id}</span></div></div><div className="flex shrink-0 flex-col items-start gap-2 lg:items-end"><span className={`status-pill ${activeVerification?.status === 'valid' ? 'status-success' : activeVerification?.status === 'pending' ? 'status-warning' : 'status-critical'}`}>{activeVerification?.status || 'pending'} verification</span><span className="text-xs text-slate-500">{activeProof ? 'Proof available' : 'Proof generating'}</span></div></div><div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-700/40 bg-slate-700/40 sm:grid-cols-4"><div className="bg-slate-950/65 p-4"><div className="tx-kicker">Severity</div><div className="mt-2 text-sm font-semibold text-rose-200">{activeReport.severity}</div></div><div className="bg-slate-950/65 p-4"><div className="tx-kicker">Proof state</div><div className="mt-2 text-sm font-semibold text-emerald-300">{activeProof?.proofStatus === 'anchored_on_chain' ? 'Anchored' : 'Generated'}</div></div><div className="bg-slate-950/65 p-4"><div className="tx-kicker">Verifier</div><div className="mt-2 truncate text-sm font-semibold text-slate-200">{activeVerification?.verifierName || 'Pending assignment'}</div></div><div className="bg-slate-950/65 p-4"><div className="tx-kicker">Outcome</div><div className="mt-2 text-sm font-semibold text-cyan-200">{activeVerification?.status === 'valid' ? 'Escrow path active' : 'Under review'}</div></div></div></section>
 
-        {/* Right Column: Audit Trail Inspector (Issue 16) */}
-        {activeReport && (
-          <div ref={detailPanelRef} className="lg:col-span-2 space-y-6">
-            {/* Timeline (Issue 17) */}
-            <VerificationTimeline
-              currentStage={
-                activeVerification?.status === 'valid'
-                  ? 'escrow_released'
-                  : activeVerification?.status === 'pending'
-                  ? 'technical_verification'
-                  : 'proof_generated'
-              }
-            />
+          <VerificationTimeline currentStage={lifecycleStage} />
 
-            {/* Chain Flow Summary Card */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-200">End-to-End Lineage Chain</h3>
+          <section className="tx-surface rounded-2xl p-6 sm:p-7"><div className="flex items-start justify-between gap-4"><div><div className="tx-kicker">Lineage map</div><h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-white">From identity to outcome</h3></div><FileKey2 className="h-5 w-5 text-blue-300" /></div><div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-5">{[['01','Identity',activeResearcher?.handle || 'Researcher'],['02','Contribution',activeReport.id],['03','Proof',activeProof ? `${activeProof.contentHash.slice(0, 10)}…` : 'Pending'],['04','Verification',activeVerification?.status || 'pending'],['05','Reward',activeVerification?.status === 'valid' ? 'Escrow release' : 'Conditional']].map(([num,label,value]) => <div key={label} className="tx-inset rounded-xl p-4"><div className="font-mono text-[10px] text-blue-300">{num}</div><div className="mt-4 text-[10px] uppercase tracking-[0.12em] text-slate-500">{label}</div><div className="mt-1 truncate text-sm font-semibold text-slate-200">{value}</div></div>)}</div></section>
 
-              <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 text-center text-xs">
-                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-                  <div className="text-[10px] text-slate-500 uppercase font-mono">1. Identity</div>
-                  <div className="font-bold text-slate-200 truncate mt-1">{activeResearcher?.handle || 'Researcher'}</div>
-                </div>
-                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-                  <div className="text-[10px] text-slate-500 uppercase font-mono">2. Contribution</div>
-                  <div className="font-bold text-slate-200 truncate mt-1">{activeReport.id}</div>
-                </div>
-                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-                  <div className="text-[10px] text-slate-500 uppercase font-mono">3. SHA-256 Proof</div>
-                  <div className="font-bold text-emerald-400 truncate mt-1">
-                    {activeProof ? `${activeProof.contentHash.slice(0, 8)}...` : 'N/A'}
-                  </div>
-                </div>
-                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-                  <div className="text-[10px] text-slate-500 uppercase font-mono">4. Verification</div>
-                  <div className="font-bold text-indigo-400 uppercase truncate mt-1">
-                    {activeVerification?.status || 'Pending'}
-                  </div>
-                </div>
-                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-                  <div className="text-[10px] text-slate-500 uppercase font-mono">5. Reward</div>
-                  <div className="font-bold text-amber-400 truncate mt-1">Programmatic Escrow</div>
-                </div>
-              </div>
-            </div>
+          {oracleResult && <OracleVerificationBadge result={oracleResult} />}
+          {activeProof && <ProofCard proof={activeProof} verification={activeVerification} />}
 
-            {/* Oracle Verification Badge */}
-            {oracleResult && <OracleVerificationBadge result={oracleResult} />}
-
-            {/* Proof Card */}
-            {activeProof && (
-              <ProofCard
-                proof={activeProof}
-                verification={activeVerification}
-              />
-            )}
-
-            {/* Report Technical Details & Code Copy (Issue 18) */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-200">Submission Technical Details</h3>
-              <div className="space-y-4 text-xs">
-                <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-mono">Title</span>
-                  <div className="text-slate-200 font-semibold text-sm mt-0.5">{activeReport.title}</div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-slate-500 block text-[10px] uppercase font-mono">Reproduction Payload & Code Evidence</span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleCopyPayload(activeReport.reproductionSteps)}
-                        className="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1"
-                      >
-                        {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copiedCode ? 'Copied!' : 'Copy Code'}</span>
-                      </button>
-                      <button
-                        onClick={() => setIsPayloadExpanded(!isPayloadExpanded)}
-                        className="p-1 text-slate-400 hover:text-white"
-                      >
-                        {isPayloadExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {isPayloadExpanded && (
-                    <pre className="bg-slate-950 p-4 rounded-xl border border-slate-800/80 text-indigo-300 font-mono text-xs mt-1 overflow-x-auto whitespace-pre-wrap leading-relaxed shadow-inner">
-                      {activeReport.reproductionSteps}
-                    </pre>
-                  )}
-                </div>
-
-                <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-mono">Technical Impact</span>
-                  <p className="text-slate-300 mt-1 leading-relaxed bg-slate-950/60 p-3 rounded-xl border border-slate-800/60">{activeReport.impact}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+          <section className="tx-surface rounded-2xl p-6 sm:p-7"><div className="flex items-start justify-between gap-4"><div><div className="tx-kicker">Technical evidence</div><h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-white">Why this contribution can be inspected</h3></div><button onClick={() => setIsPayloadExpanded(!isPayloadExpanded)} className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-300 hover:text-blue-200">{isPayloadExpanded ? 'Collapse' : 'Expand'} {isPayloadExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}</button></div><div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2"><div><div className="tx-kicker">Impact</div><p className="mt-3 text-sm leading-7 text-slate-300">{activeReport.impact}</p></div><div><div className="tx-kicker">Report description</div><p className="mt-3 text-sm leading-7 text-slate-300">{activeReport.description}</p></div></div>{isPayloadExpanded && <div className="mt-7 border-t border-slate-700/40 pt-6"><div className="flex items-center justify-between gap-3"><div className="tx-kicker">Reproduction payload & code evidence</div><button onClick={() => handleCopyPayload(activeReport.reproductionSteps)} className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-300 hover:text-blue-200">{copiedCode ? <Check className="h-3.5 w-3.5 text-emerald-300" /> : <Copy className="h-3.5 w-3.5" />}{copiedCode ? 'Copied' : 'Copy payload'}</button></div><pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-xl border border-slate-700/40 bg-slate-950/75 p-4 font-mono text-xs leading-6 text-blue-100">{activeReport.reproductionSteps}</pre><div className="mt-5"><div className="tx-kicker">Evidence input</div><p className="mt-2 text-sm leading-6 text-slate-400">{activeReport.evidence}</p></div></div>}</section>
+        </main>
       </div>
     </div>
   );

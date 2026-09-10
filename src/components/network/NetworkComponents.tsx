@@ -33,11 +33,11 @@ export const LedgerExplorer: React.FC<{ events: BlockchainEvent[] }> = ({ events
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-sm">
+    <div className="tx-surface rounded-2xl p-6 space-y-4 shadow-sm sm:p-7">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Activity className="w-5 h-5 text-emerald-400" />
-          <h3 className="text-sm font-bold text-slate-200">Simulated Blockchain Ledger Events</h3>
+          <Activity className="w-5 h-5 text-cyan-300" />
+          <div><div className="tx-kicker text-cyan-300/70">Protocol infrastructure</div><h3 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-white">Ledger events</h3></div>
         </div>
 
         <div className="flex items-center gap-3">
@@ -54,7 +54,7 @@ export const LedgerExplorer: React.FC<{ events: BlockchainEvent[] }> = ({ events
 
           <button
             onClick={handleExportCSV}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-lg border border-slate-700 transition-all"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl border border-slate-700/60 transition-all"
           >
             <Download className="w-3.5 h-3.5 text-emerald-400" />
             <span className="hidden sm:inline">Export CSV</span>
@@ -63,7 +63,7 @@ export const LedgerExplorer: React.FC<{ events: BlockchainEvent[] }> = ({ events
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
+        <table className="w-full min-w-[760px] text-left text-xs">
           <thead>
             <tr className="border-b border-slate-800 text-slate-400 font-medium uppercase tracking-wider">
               <th className="py-2.5 px-3">Event Type</th>
@@ -113,11 +113,11 @@ export const LedgerExplorer: React.FC<{ events: BlockchainEvent[] }> = ({ events
 
 export const DisputePanel: React.FC<{ disputes: Dispute[] }> = ({ disputes }) => {
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-sm">
+    <div className="tx-surface rounded-2xl p-6 space-y-4 shadow-sm sm:p-7">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-amber-400" />
-          <h3 className="text-sm font-bold text-slate-200">Dispute Resolution Panel</h3>
+          <AlertTriangle className="w-5 h-5 text-amber-300" />
+          <div><div className="tx-kicker text-amber-200/70">Evidence challenge</div><h3 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-white">Dispute resolution</h3></div>
         </div>
         <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 font-semibold">
           Escrow Lock Active
@@ -144,11 +144,11 @@ export const DisputePanel: React.FC<{ disputes: Dispute[] }> = ({ disputes }) =>
 
 export const RiskAnalysis: React.FC<{ risks: SybilRiskSignal[] }> = ({ risks }) => {
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-sm">
+    <div className="tx-surface rounded-2xl p-6 space-y-4 shadow-sm sm:p-7">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <ShieldAlert className="w-5 h-5 text-sky-400" />
-          <h3 className="text-sm font-bold text-slate-200">Sybil & Fraud Risk Analysis</h3>
+          <ShieldAlert className="w-5 h-5 text-cyan-300" />
+          <div><div className="tx-kicker text-cyan-200/70">Integrity signals</div><h3 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-white">Sybil & fraud risk</h3></div>
         </div>
         <span className="text-[10px] font-mono text-sky-400 bg-sky-500/10 px-2.5 py-0.5 rounded-full border border-sky-500/20 font-semibold">
           Deterministic Risk Engine

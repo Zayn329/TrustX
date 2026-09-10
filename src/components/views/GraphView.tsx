@@ -121,7 +121,7 @@ export const GraphView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -132,19 +132,19 @@ export const GraphView: React.FC = () => {
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
-            <Network className="w-6 h-6 text-indigo-400" />
-            <h1 className="text-2xl font-bold text-slate-100">Interactive Trust Graph</h1>
+            <Network className="w-5 h-5 text-blue-300" />
+            <h1 className="tx-page-title">Trust graph</h1>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Visual representation linking identities, bounties, proofs, verifications, and smart contract escrows.
+          <p className="text-sm text-slate-400 mt-3 max-w-2xl leading-6">
+            See why a researcher has earned trust by following the relationship between identity, contribution, proof, verification, and escrow.
           </p>
         </div>
 
         {/* Zoom & Export Controls (Category H Items 73, 80) */}
-        <div className="flex items-center gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800 text-xs">
+        <div className="flex items-center gap-2 bg-slate-900/70 p-1.5 rounded-xl border border-slate-700/50 text-xs">
           <button
             onClick={handleExportSVG}
-            className="p-2 hover:bg-slate-800 text-emerald-400 rounded-lg transition-colors flex items-center gap-1 font-semibold"
+            className="p-2 hover:bg-slate-800 text-blue-300 rounded-lg transition-colors flex items-center gap-1 font-semibold"
             title="Export Graph Image"
           >
             <Download className="w-4 h-4" />
@@ -181,9 +181,9 @@ export const GraphView: React.FC = () => {
       </div>
 
       {/* Graph Filters & Legend (Category H Items 77, 79) */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div className="tx-surface rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2 text-slate-400 font-semibold">
-          <Filter className="w-4 h-4 text-indigo-400" />
+          <Filter className="w-4 h-4 text-blue-300" />
           <span>Toggle Node Types:</span>
         </div>
 
@@ -200,7 +200,7 @@ export const GraphView: React.FC = () => {
               onClick={() => toggleType(item.key)}
               className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 visibleTypes[item.key]
-                  ? 'bg-slate-950 text-slate-200 border-slate-700'
+                  ? 'bg-blue-400/10 text-blue-100 border-blue-300/20'
                   : 'bg-slate-950/40 text-slate-600 border-slate-900 line-through'
               }`}
             >
@@ -212,7 +212,7 @@ export const GraphView: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-2xl p-4 relative overflow-hidden flex flex-col items-center justify-center min-h-[420px] shadow-sm">
+        <div className="lg:col-span-3 tx-surface rounded-[1.75rem] p-4 relative overflow-hidden flex flex-col items-center justify-center min-h-[420px] shadow-sm">
           <svg
             id="trust-graph-svg"
             viewBox="0 0 720 360"
@@ -298,7 +298,7 @@ export const GraphView: React.FC = () => {
           </svg>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm">
+        <div className="tx-surface rounded-[1.75rem] p-5 space-y-4 shadow-sm">
           <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider border-b border-slate-800 pb-2">
             Graph Node Inspector
           </h3>
@@ -311,7 +311,7 @@ export const GraphView: React.FC = () => {
               </div>
               <div>
                 <span className="text-slate-500 block text-[10px] uppercase font-mono">Entity Type</span>
-                <span className="font-mono text-indigo-400 uppercase font-bold text-xs">{selectedNode.type}</span>
+            <span className="font-mono text-blue-300 uppercase font-bold text-xs">{selectedNode.type}</span>
               </div>
               <div>
                 <span className="text-slate-500 block text-[10px] uppercase font-mono">Properties</span>

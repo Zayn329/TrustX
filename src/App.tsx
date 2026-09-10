@@ -84,7 +84,7 @@ export function App() {
   return (
     <TrustProvider>
       <ErrorBoundary>
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+        <div className="min-h-screen bg-[#060a13] text-slate-100 flex flex-col font-sans">
           <Header onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} />
 
           <div className="flex flex-1 w-full relative">
@@ -99,19 +99,19 @@ export function App() {
             {/* Main Content Workspace Container */}
             <div className="flex-1 flex flex-col min-w-0">
               {/* Breadcrumb Navigation Trail Bar */}
-              <div className="bg-slate-900/60 border-b border-slate-800/80 px-4 sm:px-6 lg:px-8 py-2.5 flex items-center gap-2 text-xs text-slate-400">
+              <div className="bg-slate-950/45 border-b border-slate-800/60 px-4 sm:px-6 lg:px-10 py-3 flex items-center gap-2 text-[11px] text-slate-500">
                 <button
                   onClick={() => setActiveTab('dashboard')}
                   className="hover:text-slate-200 flex items-center gap-1.5 transition-colors"
                 >
-                  <Home className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Trust Engine</span>
+                  <Home className="w-3.5 h-3.5 text-blue-300" />
+                  <span className="font-medium text-slate-400">TrustX</span>
                 </button>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
-                <span className="text-slate-200 font-semibold">{viewLabels[activeTab]}</span>
+                <span className="text-slate-200 font-medium">{viewLabels[activeTab]}</span>
               </div>
 
-              <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10">
                 {renderActiveView()}
               </main>
             </div>

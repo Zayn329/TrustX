@@ -11,15 +11,15 @@ export const NetworkView: React.FC = () => {
     <div className="space-y-8">
       <div>
         <div className="flex items-center gap-2">
-          <Activity className="w-6 h-6 text-indigo-400" />
-          <h1 className="text-2xl font-bold text-slate-100">Network & Protocol Monitor</h1>
+          <Activity className="w-5 h-5 text-cyan-300" />
+          <h1 className="tx-page-title">Network & protocol</h1>
         </div>
         <p className="text-xs text-slate-400 mt-1">
-          Inspect real-time simulated blockchain ledger events, dispute resolution escrow locks, and Sybil fraud detection signals.
+          Developer-facing infrastructure view for the demo ledger, arbitration state, escrow locks, and risk signals.
         </p>
       </div>
 
-      <LedgerExplorer events={blockchainEvents} />
+      <div className="flex items-center gap-2 text-[11px] text-slate-500"><span className="h-1.5 w-1.5 rounded-full bg-cyan-300" /> Demo protocol data · external network state is only shown when connected</div><LedgerExplorer events={blockchainEvents} />
 
       {/* Phase 8: Arbitration Court View */}
       <ArbitrationCourtView />

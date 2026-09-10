@@ -26,22 +26,22 @@ export const PassportView: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Header Profile Card */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm">
+      <div className="tx-surface-raised rounded-[2rem] p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="flex items-center space-x-4">
           <button
             onClick={() => { window.location.hash = '#dashboard'; }}
-            className="p-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition-colors"
+            className="p-2 rounded-xl bg-slate-950/70 border border-slate-700/50 text-slate-400 hover:text-white transition-colors"
             title="Back to Dashboard Overview"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold text-xl flex-shrink-0">
+          <div className="w-16 h-16 rounded-2xl bg-blue-400/10 border border-blue-300/20 flex items-center justify-center text-blue-300 font-bold text-xl flex-shrink-0">
             <UserCheck className="w-8 h-8" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-slate-100">{currentResearcher.name}</h1>
-              <span className="bg-emerald-500/10 text-emerald-400 text-xs px-2.5 py-0.5 rounded-full border border-emerald-500/20 font-semibold">
+              <h1 className="text-3xl font-semibold tracking-[-0.05em] text-slate-100">{currentResearcher.name}</h1>
+              <span className="status-pill status-success">
                 Verified Security Researcher
               </span>
             </div>
@@ -55,16 +55,16 @@ export const PassportView: React.FC = () => {
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
           <button
             onClick={() => setIsCredentialModalOpen(true)}
-            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-600/20"
+            className="inline-flex items-center gap-2 bg-blue-400 hover:bg-blue-300 text-slate-950 font-semibold text-xs px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-600/15"
           >
             <QrCode className="w-4 h-4" />
             <span>Export W3C Credential</span>
           </button>
 
-          <div className="flex items-center gap-6 bg-slate-950 p-4 rounded-xl border border-slate-800/80 w-full sm:w-auto justify-around">
+          <div className="flex items-center gap-6 bg-slate-950/60 p-4 rounded-2xl border border-slate-700/50 w-full sm:w-auto justify-around">
             <div className="text-center">
               <div className="text-[10px] text-slate-500 font-medium uppercase">Trust Score</div>
-              <div className="text-xl font-bold text-emerald-400 mt-0.5">{currentResearcher.trustScore} / 100</div>
+              <div className="text-xl font-semibold text-emerald-300 mt-0.5">{currentResearcher.trustScore} / 100</div>
             </div>
             <div className="w-px h-8 bg-slate-800" />
             <div className="text-center">
@@ -74,7 +74,7 @@ export const PassportView: React.FC = () => {
             <div className="w-px h-8 bg-slate-800" />
             <div className="text-center">
               <div className="text-[10px] text-slate-500 font-medium uppercase">Rewards Earned</div>
-              <div className="text-xl font-bold text-amber-400 mt-0.5">${currentResearcher.totalRewardsEarned.toLocaleString()}</div>
+              <div className="text-xl font-semibold text-amber-200 mt-0.5">${currentResearcher.totalRewardsEarned.toLocaleString()}</div>
             </div>
           </div>
         </div>
@@ -90,18 +90,18 @@ export const PassportView: React.FC = () => {
       />
 
       {/* Interactive Reputation Score Simulator (Category I Item 87) */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div className="tx-surface rounded-2xl p-6 space-y-5 sm:p-7">
+        <div className="flex flex-col gap-3 border-b border-slate-700/40 pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
-            <Sliders className="w-5 h-5 text-indigo-400" />
-            <h3 className="text-sm font-bold text-slate-200">Interactive Reputation Score Simulator</h3>
+            <Sliders className="w-5 h-5 text-blue-300" />
+            <div><div className="tx-kicker text-blue-300/70">Scenario lab · not your current score</div><h3 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-white">Reputation score simulator</h3></div>
           </div>
-          <span className="text-xs bg-indigo-500/10 text-indigo-300 font-mono font-bold px-3 py-1 rounded-full border border-indigo-500/20">
+          <span className="status-pill border-blue-300/20 bg-blue-400/10 text-blue-200">
             Simulated Score: {simulatedScore} / 100
           </span>
         </div>
 
-        <p className="text-xs text-slate-400">
+        <p className="text-sm leading-6 text-slate-400">
           Adjust the sliders below to test how submitting verified bounties dynamically impacts portable reputation scores in real time.
         </p>
 
@@ -154,8 +154,8 @@ export const PassportView: React.FC = () => {
       </div>
 
       {/* Verified On-Chain Reputation History (Issue 23) */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
-        <h3 className="text-sm font-bold text-slate-200 mb-4">On-Chain Reputation Event Log</h3>
+      <div className="tx-surface rounded-2xl p-6 sm:p-7">
+        <div className="tx-kicker">Reputation provenance</div><h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-white mb-5">Reputation event log</h3>
         <div className="space-y-3">
           {reputationEvents.map(evt => {
             const isPositive = evt.delta >= 0;
@@ -163,7 +163,7 @@ export const PassportView: React.FC = () => {
             return (
               <div
                 key={evt.id}
-                className="bg-slate-950 p-4 rounded-xl border border-slate-800/80 flex items-center justify-between text-xs transition-all hover:bg-slate-900/60"
+                className="bg-slate-950/55 p-4 rounded-xl border border-slate-700/40 flex items-center justify-between text-xs transition-all hover:bg-slate-900/60"
               >
                 <div className="space-y-1">
                   <div className="font-semibold text-slate-200 flex items-center gap-2">

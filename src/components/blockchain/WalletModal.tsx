@@ -26,11 +26,11 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn"
+      className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xl flex items-center justify-center p-4 animate-fadeIn"
     >
       <div
         onClick={e => e.stopPropagation()}
-        className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-6 relative shadow-2xl"
+        className="bg-[#0b1220] border border-slate-600/40 rounded-[1.75rem] max-w-md w-full p-6 space-y-6 relative shadow-[0_30px_100px_rgba(0,0,0,0.45)]"
       >
         <button
           onClick={onClose}
@@ -40,7 +40,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
         </button>
 
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-indigo-600/20 rounded-xl border border-indigo-500/30 text-indigo-400">
+            <div className="p-3 bg-blue-400/10 rounded-xl border border-blue-300/20 text-blue-300">
             <Wallet className="w-6 h-6" />
           </div>
           <div>
@@ -79,7 +79,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
               className="w-full flex items-center justify-between p-4 bg-slate-950 hover:bg-slate-800/80 rounded-xl border border-slate-800 text-slate-200 font-semibold text-xs transition-all"
             >
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-indigo-400" />
+                <ShieldCheck className="w-4 h-4 text-blue-300" />
                 <span>MetaMask / EVM Wallet</span>
               </div>
               <span className="text-xs text-indigo-400 font-mono">

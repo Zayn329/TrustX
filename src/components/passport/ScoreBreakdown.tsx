@@ -47,7 +47,7 @@ export const ScoreBreakdown: React.FC<ScoreBreakdownProps> = ({ factors, totalSc
   ];
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-sm">
+    <div className="tx-surface rounded-2xl p-6 space-y-4 sm:p-7">
       <div className="flex items-center justify-between border-b border-slate-800 pb-3">
         <div>
           <h3 className="text-sm font-bold text-slate-200">Trust Score Factor Breakdown</h3>

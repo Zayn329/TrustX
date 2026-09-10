@@ -42,35 +42,35 @@ export const BountiesView: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => { window.location.hash = '#dashboard'; }}
-              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors"
+              className="p-2 rounded-xl bg-slate-900/80 border border-slate-700/50 text-slate-400 hover:text-white transition-colors"
               title="Back to Dashboard Overview"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
-            <Target className="w-6 h-6 text-indigo-400" />
-            <h1 className="text-2xl font-bold text-slate-100">Bug Bounty Marketplace</h1>
+            <Target className="w-5 h-5 text-blue-300" />
+            <h1 className="tx-page-title">Bug Bounty Marketplace</h1>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Browse active security bounties backed by programmatic smart contract escrows.
+          <p className="text-sm text-slate-400 mt-3 max-w-xl leading-6">
+            Find security work with clear scope, funded rewards, and a traceable path from report to verification.
           </p>
         </div>
 
         {/* Filter Controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-700/40 bg-slate-900/50 p-2">
           {/* Card / Table View Toggle (Category F Item 57) */}
-          <div className="bg-slate-900 p-1 rounded-lg border border-slate-800 flex items-center gap-1">
+          <div className="flex items-center gap-1 border-r border-slate-700/40 pr-2">
             <button
               onClick={() => setViewMode('grid')}
               title="Card Grid View"
               className={`p-1.5 rounded transition-all ${
-                viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                viewMode === 'grid' ? 'bg-blue-400 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
               }`}
             >
               <LayoutGrid className="w-4 h-4" />
@@ -79,7 +79,7 @@ export const BountiesView: React.FC = () => {
               onClick={() => setViewMode('table')}
               title="Compact Table View"
               className={`p-1.5 rounded transition-all ${
-                viewMode === 'table' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                viewMode === 'table' ? 'bg-blue-400 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
               }`}
             >
               <List className="w-4 h-4" />
@@ -93,14 +93,14 @@ export const BountiesView: React.FC = () => {
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="Search bounties..."
-              className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-slate-950/70 border border-slate-700/50 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-blue-300/60"
             />
           </div>
 
           <select
             value={selectedSeverity}
             onChange={e => setSelectedSeverity(e.target.value)}
-            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+            className="bg-slate-950/70 border border-slate-700/50 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-blue-300/60"
           >
             <option value="all">All Severities</option>
             <option value="critical">Critical</option>
@@ -113,7 +113,7 @@ export const BountiesView: React.FC = () => {
             <button
               onClick={resetFilters}
               title="Reset Filters"
-              className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 text-xs flex items-center gap-1 transition-all"
+              className="p-2.5 bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700/60 text-xs flex items-center gap-1 transition-all"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span className="hidden md:inline">Reset</span>
@@ -123,22 +123,22 @@ export const BountiesView: React.FC = () => {
       </div>
 
       {/* Count Summary & Filter Pills */}
-      <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 border-b border-slate-800/80 pb-3 gap-2">
+      <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 border-y border-slate-800/60 py-4 gap-2">
         <div className="font-semibold text-slate-300">
-          Showing <span className="text-indigo-400 font-bold">{filteredBounties.length}</span> of {bounties.length} active bounties
+          Showing <span className="text-blue-300 font-bold">{filteredBounties.length}</span> of {bounties.length} active opportunities
         </div>
 
         {(searchTerm !== '' || selectedSeverity !== 'all') && (
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-slate-500">Active Filters:</span>
             {searchTerm && (
-              <span className="bg-indigo-500/10 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/20 font-mono flex items-center gap-1">
+                <span className="bg-blue-400/10 text-blue-200 px-2 py-0.5 rounded-full border border-blue-300/20 font-mono flex items-center gap-1">
                 Search: "{searchTerm}"
                 <button onClick={() => setSearchTerm('')}><X className="w-3 h-3 hover:text-white" /></button>
               </span>
             )}
             {selectedSeverity !== 'all' && (
-              <span className="bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded border border-amber-500/20 font-mono flex items-center gap-1 capitalize">
+                <span className="bg-amber-300/10 text-amber-200 px-2 py-0.5 rounded-full border border-amber-300/20 font-mono flex items-center gap-1 capitalize">
                 Severity: {selectedSeverity}
                 <button onClick={() => setSelectedSeverity('all')}><X className="w-3 h-3 hover:text-white" /></button>
               </span>
@@ -159,10 +159,10 @@ export const BountiesView: React.FC = () => {
           ))}
         </div>
       ) : (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 overflow-x-auto shadow-sm">
+        <div className="tx-surface rounded-2xl p-4 overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-b border-slate-800 text-slate-400 font-medium uppercase tracking-wider">
+              <tr className="border-b border-slate-700/50 text-slate-500 font-medium uppercase tracking-[0.14em] text-[10px]">
                 <th className="py-3 px-4">Target Title</th>
                 <th className="py-3 px-4">Organization</th>
                 <th className="py-3 px-4">Severity</th>
@@ -173,7 +173,7 @@ export const BountiesView: React.FC = () => {
             <tbody className="divide-y divide-slate-800/60 text-slate-300">
               {filteredBounties.map(b => (
                 <tr key={b.id} className="hover:bg-slate-800/40 transition-colors">
-                  <td className="py-3 px-4 font-semibold text-slate-100">{b.title}</td>
+                  <td className="py-4 px-4 font-semibold text-slate-100">{b.title}</td>
                   <td className="py-3 px-4 text-slate-400">{b.organizationName}</td>
                   <td className="py-3 px-4">
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
@@ -184,7 +184,7 @@ export const BountiesView: React.FC = () => {
                   <td className="py-3 px-4 text-right">
                     <button
                       onClick={() => setSelectedBounty(b)}
-                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-lg transition-all"
+                      className="px-3 py-1.5 bg-blue-400 hover:bg-blue-300 text-slate-950 font-semibold text-xs rounded-lg transition-all"
                     >
                       Inspect
                     </button>

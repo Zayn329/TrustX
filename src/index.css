@@ -4,10 +4,95 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: dark;
+  --tx-bg: #060a13;
+  --tx-surface: #0b1220;
+  --tx-surface-raised: #101a2b;
+  --tx-inset: #070d18;
+  --tx-line: rgba(148, 163, 184, 0.14);
+  --tx-line-strong: rgba(148, 163, 184, 0.23);
+  --tx-text: #edf3fb;
+  --tx-muted: #91a0b5;
+  --tx-accent: #66a8ff;
+  --tx-accent-soft: rgba(74, 144, 255, 0.12);
+}
+
+* {
+  border-color: var(--tx-line);
+}
+
+html {
+  background: var(--tx-bg);
+}
+
 body {
   font-family: 'Inter', sans-serif;
+  background:
+    radial-gradient(circle at 70% -20%, rgba(47, 93, 167, 0.17), transparent 34rem),
+    var(--tx-bg);
+  color: var(--tx-text);
+  min-width: 320px;
 }
 
 code, pre, .font-mono {
   font-family: 'JetBrains Mono', monospace;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+@layer components {
+  .tx-surface {
+    @apply border border-slate-700/40 bg-slate-900/70 shadow-[0_18px_60px_rgba(0,0,0,0.16)];
+  }
+
+  .tx-surface-raised {
+    @apply border border-slate-600/40 bg-slate-800/55 shadow-[0_22px_70px_rgba(0,0,0,0.2)];
+  }
+
+  .tx-inset {
+    @apply border border-slate-700/35 bg-slate-950/60;
+  }
+
+  .tx-kicker {
+    @apply text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500;
+  }
+
+  .tx-page-title {
+    @apply text-3xl font-semibold tracking-[-0.04em] text-slate-50 sm:text-4xl;
+  }
+
+  .tx-muted {
+    @apply text-slate-400;
+  }
+
+  .tx-focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-400/35 focus:ring-offset-2 focus:ring-offset-slate-950;
+  }
+
+  .status-pill {
+    @apply inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em];
+  }
+
+  .status-success {
+    @apply border-emerald-300/20 bg-emerald-300/10 text-emerald-300;
+  }
+
+  .status-warning {
+    @apply border-amber-300/20 bg-amber-300/10 text-amber-200;
+  }
+
+  .status-critical {
+    @apply border-rose-300/20 bg-rose-300/10 text-rose-200;
+  }
+}
+
+::selection {
+  background: rgba(74, 144, 255, 0.35);
+  color: white;
 }

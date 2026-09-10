@@ -26,20 +26,20 @@ export const Header: React.FC<HeaderProps> = ({ onOpenCommandPalette }) => {
 
   return (
     <>
-      <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 shadow-sm">
-        <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <header className="bg-[#080d18]/95 border-b border-slate-700/40 sticky top-0 z-40 backdrop-blur-xl">
+        <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 h-[4.5rem] flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="bg-indigo-600/20 p-2 rounded-lg border border-indigo-500/30 text-indigo-400">
+            <div className="bg-blue-400/10 p-2.5 rounded-xl border border-blue-300/20 text-blue-300 shadow-[0_0_24px_rgba(73,143,255,0.12)]">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-slate-100 text-lg tracking-wide">Trust Engine</span>
-                <span className="bg-slate-800 text-slate-300 text-xs px-2 py-0.5 rounded border border-slate-700 font-mono font-medium">
-                  v1.0 (Demo Protocol)
+                <span className="font-semibold text-slate-50 text-lg tracking-[-0.03em]">TrustX<span className="sr-only">Trust Engine</span></span>
+                <span className="bg-slate-800/80 text-slate-400 text-[10px] px-2 py-0.5 rounded-full border border-slate-700/60 font-mono font-medium">
+                  DEMO PROTOCOL
                 </span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">Trustless Open-Source Infrastructure</p>
+              <p className="text-[11px] text-slate-500 hidden sm:block">Verifiable trust infrastructure</p>
             </div>
           </div>
 
@@ -47,7 +47,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenCommandPalette }) => {
             {/* Cmd+K Quick Search Trigger Button */}
             <button
               onClick={onOpenCommandPalette}
-              className="hidden sm:inline-flex items-center gap-2 bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3 py-1.5 rounded-xl text-xs transition-all"
+              className="hidden sm:inline-flex items-center gap-2 bg-slate-950/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/50 px-3 py-2 rounded-xl text-xs transition-all"
             >
               <Search className="w-3.5 h-3.5 text-indigo-400" />
               <span>Quick Search...</span>
@@ -58,23 +58,23 @@ export const Header: React.FC<HeaderProps> = ({ onOpenCommandPalette }) => {
 
             <button
               onClick={() => setIsWalletModalOpen(true)}
-              className="inline-flex items-center gap-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              className="inline-flex items-center gap-2 bg-blue-400/10 hover:bg-blue-400/20 text-blue-200 border border-blue-300/25 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
             >
               <Wallet className="w-4 h-4 text-indigo-400" />
               <span className="hidden xs:inline">Connect Wallet</span>
             </button>
 
             <div className="hidden xl:flex items-center space-x-2 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/60 text-xs text-slate-200">
-              <Cpu className="w-4 h-4 text-emerald-400" />
+              <Cpu className="w-4 h-4 text-cyan-300" />
               <span className="text-slate-400">Ledger:</span>
-              <span className="font-mono text-emerald-400 font-bold text-xs">Block #18,420,105</span>
+              <span className="font-mono text-cyan-300 font-bold text-xs">Block #18,420,105</span>
             </div>
 
             {/* Interactive Profile Dropdown (Issue 4, 5, 6) */}
             <div className="relative">
               <button
                 onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                className="flex items-center space-x-2.5 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-700 transition-all text-left"
+                className="flex items-center space-x-2.5 bg-slate-800/80 hover:bg-slate-700 px-3 py-2 rounded-xl border border-slate-700/70 transition-all text-left"
               >
                 <KeyRound className="w-4 h-4 text-indigo-400 flex-shrink-0" />
                 <div className="hidden md:block">
