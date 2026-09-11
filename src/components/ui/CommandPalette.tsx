@@ -43,11 +43,11 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-start justify-center pt-20 p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden flex flex-col animate-fadeIn">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-start justify-center pt-20 p-4">
+      <div className="bg-[#111111] border border-white/[0.09] rounded-xl max-w-xl w-full overflow-hidden flex flex-col animate-fadeIn">
         {/* Search Header */}
-        <div className="p-4 border-b border-slate-800 flex items-center gap-3 bg-slate-950/50">
-          <Search className="w-5 h-5 text-indigo-400 flex-shrink-0" />
+        <div className="p-4 border-b border-white/[0.07] flex items-center gap-3 bg-[#050505]">
+          <Search className="w-5 h-5 text-[#D7FF3F] flex-shrink-0" />
           <input
             type="text"
             autoFocus
@@ -58,7 +58,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
           />
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800"
+            className="p-1 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.06]"
           >
             <X className="w-4 h-4" />
           </button>
@@ -74,37 +74,37 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mt-1">
               <button
                 onClick={() => handleSelect('bounties')}
-                className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-xs text-slate-200 border border-slate-800 text-left"
+                className="flex items-center gap-2 p-2.5 rounded-md bg-[#050505] hover:bg-white/[0.06] text-xs text-zinc-200 border border-white/[0.08] text-left"
               >
-                <Target className="w-4 h-4 text-indigo-400" />
+                <Target className="w-4 h-4 text-[#D7FF3F]" />
                 <span>Bounties</span>
               </button>
               <button
                 onClick={() => handleSelect('explorer')}
-                className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-xs text-slate-200 border border-slate-800 text-left"
+                className="flex items-center gap-2 p-2.5 rounded-md bg-[#050505] hover:bg-white/[0.06] text-xs text-zinc-200 border border-white/[0.08] text-left"
               >
                 <FileText className="w-4 h-4 text-emerald-400" />
                 <span>Audit Explorer</span>
               </button>
               <button
                 onClick={() => handleSelect('passport')}
-                className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-xs text-slate-200 border border-slate-800 text-left"
+                className="flex items-center gap-2 p-2.5 rounded-md bg-[#050505] hover:bg-white/[0.06] text-xs text-zinc-200 border border-white/[0.08] text-left"
               >
                 <User className="w-4 h-4 text-amber-400" />
                 <span>Passport</span>
               </button>
               <button
                 onClick={() => handleSelect('graph')}
-                className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-xs text-slate-200 border border-slate-800 text-left"
+                className="flex items-center gap-2 p-2.5 rounded-md bg-[#050505] hover:bg-white/[0.06] text-xs text-zinc-200 border border-white/[0.08] text-left"
               >
-                <Network className="w-4 h-4 text-purple-400" />
+                <Network className="w-4 h-4 text-amber-400" />
                 <span>Trust Graph</span>
               </button>
               <button
                 onClick={() => handleSelect('network')}
-                className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-xs text-slate-200 border border-slate-800 text-left"
+                className="flex items-center gap-2 p-2.5 rounded-md bg-[#050505] hover:bg-white/[0.06] text-xs text-zinc-200 border border-white/[0.08] text-left"
               >
-                <Shield className="w-4 h-4 text-sky-400" />
+                <Shield className="w-4 h-4 text-[#D7FF3F]" />
                 <span>Ledger Monitor</span>
               </button>
             </div>
@@ -121,7 +121,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
                   <button
                     key={b.id}
                     onClick={() => handleSelect('bounties')}
-                    className="w-full text-left p-2.5 rounded-xl hover:bg-slate-800 flex items-center justify-between text-xs text-slate-200"
+                    className="w-full text-left p-2.5 rounded-md hover:bg-white/[0.06] flex items-center justify-between text-xs text-zinc-200"
                   >
                     <div>
                       <div className="font-semibold">{b.title}</div>
@@ -145,13 +145,13 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
                   <button
                     key={r.id}
                     onClick={() => handleSelect('explorer')}
-                    className="w-full text-left p-2.5 rounded-xl hover:bg-slate-800 flex items-center justify-between text-xs text-slate-200"
+                    className="w-full text-left p-2.5 rounded-md hover:bg-white/[0.06] flex items-center justify-between text-xs text-zinc-200"
                   >
                     <div>
                       <div className="font-semibold">{r.title}</div>
                       <div className="text-[10px] text-slate-500 font-mono">{r.id}</div>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20">
                       {r.severity}
                     </span>
                   </button>
@@ -162,7 +162,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
         </div>
 
         {/* Footer Hint */}
-        <div className="p-3 bg-slate-950 border-t border-slate-800 text-[10px] text-slate-500 flex items-center justify-between px-4">
+        <div className="p-3 bg-[#050505] border-t border-white/[0.07] text-[10px] text-zinc-500 flex items-center justify-between px-4">
           <span>Navigate with mouse or quick jump buttons</span>
           <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded text-slate-400">ESC to close</span>
         </div>

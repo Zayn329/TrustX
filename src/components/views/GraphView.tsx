@@ -108,15 +108,15 @@ export const GraphView: React.FC = () => {
   const getNodeColor = (type: Node['type']) => {
     switch (type) {
       case 'identity':
-        return '#10b981';
+        return '#D7FF3F';
       case 'bounty':
-        return '#6366f1';
+        return '#F5F5F2';
       case 'escrow':
         return '#f59e0b';
       case 'contribution':
-        return '#38bdf8';
+        return '#34D399';
       case 'proof':
-        return '#a855f7';
+        return '#A1A1A1';
     }
   };
 
@@ -132,46 +132,46 @@ export const GraphView: React.FC = () => {
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
-            <Network className="w-5 h-5 text-blue-300" />
+            <Network className="w-5 h-5 text-[#D7FF3F]" />
             <h1 className="tx-page-title">Trust graph</h1>
           </div>
-          <p className="text-sm text-slate-400 mt-3 max-w-2xl leading-6">
+          <p className="text-sm text-zinc-400 mt-3 max-w-2xl leading-6">
             See why a researcher has earned trust by following the relationship between identity, contribution, proof, verification, and escrow.
           </p>
         </div>
 
         {/* Zoom & Export Controls (Category H Items 73, 80) */}
-        <div className="flex items-center gap-2 bg-slate-900/70 p-1.5 rounded-xl border border-slate-700/50 text-xs">
+        <div className="flex items-center gap-2 bg-[#111111] p-1.5 rounded-lg border border-white/[0.08] text-xs">
           <button
             onClick={handleExportSVG}
-            className="p-2 hover:bg-slate-800 text-blue-300 rounded-lg transition-colors flex items-center gap-1 font-semibold"
+            className="p-2 hover:bg-white/[0.06] text-[#D7FF3F] rounded-md transition-colors flex items-center gap-1 font-semibold"
             title="Export Graph Image"
           >
             <Download className="w-4 h-4" />
             <span className="hidden sm:inline">Export SVG</span>
           </button>
-          <div className="w-px h-5 bg-slate-800" />
+          <div className="w-px h-5 bg-white/[0.08]" />
           <button
             onClick={handleZoomIn}
-            className="p-2 hover:bg-slate-800 text-slate-300 rounded-lg transition-colors flex items-center gap-1 font-semibold"
+            className="p-2 hover:bg-white/[0.06] text-zinc-300 rounded-md transition-colors flex items-center gap-1 font-semibold"
             title="Zoom In"
           >
-            <ZoomIn className="w-4 h-4 text-indigo-400" />
+            <ZoomIn className="w-4 h-4 text-[#D7FF3F]" />
             <span className="hidden sm:inline">Zoom In</span>
           </button>
-          <div className="w-px h-5 bg-slate-800" />
+          <div className="w-px h-5 bg-white/[0.08]" />
           <button
             onClick={handleZoomOut}
-            className="p-2 hover:bg-slate-800 text-slate-300 rounded-lg transition-colors flex items-center gap-1 font-semibold"
+            className="p-2 hover:bg-white/[0.06] text-zinc-300 rounded-md transition-colors flex items-center gap-1 font-semibold"
             title="Zoom Out"
           >
-            <ZoomOut className="w-4 h-4 text-indigo-400" />
+            <ZoomOut className="w-4 h-4 text-[#D7FF3F]" />
             <span className="hidden sm:inline">Zoom Out</span>
           </button>
-          <div className="w-px h-5 bg-slate-800" />
+          <div className="w-px h-5 bg-white/[0.08]" />
           <button
             onClick={handleResetZoom}
-            className="p-2 hover:bg-slate-800 text-slate-300 rounded-lg transition-colors flex items-center gap-1 font-semibold"
+            className="p-2 hover:bg-white/[0.06] text-zinc-300 rounded-md transition-colors flex items-center gap-1 font-semibold"
             title="Reset Zoom"
           >
             <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
@@ -181,27 +181,27 @@ export const GraphView: React.FC = () => {
       </div>
 
       {/* Graph Filters & Legend (Category H Items 77, 79) */}
-      <div className="tx-surface rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-2 text-slate-400 font-semibold">
-          <Filter className="w-4 h-4 text-blue-300" />
+      <div className="tx-surface rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2 text-zinc-400 font-semibold">
+          <Filter className="w-4 h-4 text-[#D7FF3F]" />
           <span>Toggle Node Types:</span>
         </div>
 
         <div className="flex flex-wrap gap-2">
           {[
-            { key: 'identity', label: 'Identities', color: '#10b981' },
-            { key: 'bounty', label: 'Bounties', color: '#6366f1' },
+            { key: 'identity', label: 'Identities', color: '#D7FF3F' },
+            { key: 'bounty', label: 'Bounties', color: '#F5F5F2' },
             { key: 'escrow', label: 'Escrows', color: '#f59e0b' },
-            { key: 'contribution', label: 'Reports', color: '#38bdf8' },
-            { key: 'proof', label: 'Proofs', color: '#a855f7' },
+            { key: 'contribution', label: 'Reports', color: '#34D399' },
+            { key: 'proof', label: 'Proofs', color: '#A1A1A1' },
           ].map(item => (
             <button
               key={item.key}
               onClick={() => toggleType(item.key)}
               className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 visibleTypes[item.key]
-                  ? 'bg-blue-400/10 text-blue-100 border-blue-300/20'
-                  : 'bg-slate-950/40 text-slate-600 border-slate-900 line-through'
+                  ? 'bg-[#D7FF3F]/10 text-zinc-100 border-[#D7FF3F]/20'
+                  : 'bg-[#050505] text-zinc-600 border-white/[0.05] line-through'
               }`}
             >
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
@@ -212,7 +212,7 @@ export const GraphView: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-3 tx-surface rounded-[1.75rem] p-4 relative overflow-hidden flex flex-col items-center justify-center min-h-[420px] shadow-sm">
+        <div className="lg:col-span-3 tx-surface tx-grid rounded-xl p-4 relative overflow-hidden flex flex-col items-center justify-center min-h-[420px]">
           <svg
             id="trust-graph-svg"
             viewBox="0 0 720 360"
@@ -234,9 +234,9 @@ export const GraphView: React.FC = () => {
                     y1={sourceNode.y}
                     x2={targetNode.x}
                     y2={targetNode.y}
-                    stroke="#475569"
-                    strokeWidth="2.5"
-                    strokeDasharray="4 4"
+                    stroke="rgba(255,255,255,0.18)"
+                    strokeWidth="1.5"
+                    strokeDasharray="5 6"
                   />
                   <rect
                     x={midX - 45}
@@ -244,15 +244,15 @@ export const GraphView: React.FC = () => {
                     width="90"
                     height="22"
                     rx="6"
-                    fill="#020617"
-                    stroke="#334155"
+                    fill="#050505"
+                    stroke="rgba(255,255,255,0.12)"
                     strokeWidth="1.5"
                   />
                   <text
                     x={midX}
                     y={midY + 3}
                     textAnchor="middle"
-                    fill="#e2e8f0"
+                    fill="#A1A1A1"
                     fontSize="10"
                     fontWeight="700"
                     fontFamily="monospace"
@@ -277,10 +277,10 @@ export const GraphView: React.FC = () => {
                     cx={node.x}
                     cy={node.y}
                     r={isSelected ? "28" : "22"}
-                    fill="#0f172a"
+                    fill="#0B0B0B"
                     stroke={color}
                     strokeWidth={isSelected ? "4" : "2.5"}
-                    className={isSelected ? 'filter drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]' : ''}
+                    className={isSelected ? 'filter drop-shadow-[0_0_8px_rgba(215,255,63,0.28)]' : ''}
                   />
                   <text
                     x={node.x}
@@ -298,8 +298,8 @@ export const GraphView: React.FC = () => {
           </svg>
         </div>
 
-        <div className="tx-surface rounded-[1.75rem] p-5 space-y-4 shadow-sm">
-          <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider border-b border-slate-800 pb-2">
+        <div className="tx-surface rounded-xl p-5 space-y-4">
+          <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider border-b border-white/[0.07] pb-2">
             Graph Node Inspector
           </h3>
 
@@ -311,7 +311,7 @@ export const GraphView: React.FC = () => {
               </div>
               <div>
                 <span className="text-slate-500 block text-[10px] uppercase font-mono">Entity Type</span>
-            <span className="font-mono text-blue-300 uppercase font-bold text-xs">{selectedNode.type}</span>
+                <span className="font-mono text-[#D7FF3F] uppercase font-bold text-xs">{selectedNode.type}</span>
               </div>
               <div>
                 <span className="text-slate-500 block text-[10px] uppercase font-mono">Properties</span>

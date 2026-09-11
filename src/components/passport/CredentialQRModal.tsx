@@ -24,31 +24,31 @@ export const CredentialQRModal: React.FC<CredentialQRModalProps> = ({ isOpen, on
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn"
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn"
     >
       <div
         onClick={e => e.stopPropagation()}
-        className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-6 relative shadow-2xl"
+        className="bg-[#111111] border border-white/[0.09] rounded-xl max-w-md w-full p-6 space-y-6 relative"
       >
         <button
           onClick={onClose}
-          className="absolute top-6 right-6 text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800 transition-colors"
+          className="absolute top-6 right-6 text-zinc-400 hover:text-zinc-200 p-1 rounded-md hover:bg-white/[0.06] transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-indigo-600/20 rounded-xl border border-indigo-500/30 text-indigo-400">
+          <div className="p-3 bg-[#D7FF3F]/10 rounded-lg border border-[#D7FF3F]/20 text-[#D7FF3F]">
             <QrCode className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-100">W3C Verifiable Credential</h3>
-            <p className="text-xs text-slate-400">Phase 6: Portable Credential Export</p>
+            <h3 className="text-lg font-bold text-zinc-100">W3C Verifiable Credential</h3>
+            <p className="text-xs text-zinc-400">DEMO PROTOCOL / Portable credential export</p>
           </div>
         </div>
 
-        <div className="bg-slate-950 p-6 rounded-2xl border border-slate-800 flex flex-col items-center space-y-4">
-          <div className="w-48 h-48 bg-white p-3 rounded-xl flex items-center justify-center shadow-inner">
+        <div className="bg-[#050505] p-6 rounded-lg border border-white/[0.08] flex flex-col items-center space-y-4">
+          <div className="w-48 h-48 bg-white p-3 rounded-lg flex items-center justify-center">
             <div className="w-full h-full bg-slate-950 rounded border-2 border-slate-900 flex flex-col items-center justify-center p-2 text-center text-[9px] font-mono text-emerald-400 break-all overflow-hidden">
               <QrCode className="w-24 h-24 text-slate-200 mb-1" />
               <span>{credential.id}</span>
@@ -65,7 +65,7 @@ export const CredentialQRModal: React.FC<CredentialQRModalProps> = ({ isOpen, on
           </div>
         </div>
 
-        <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80 text-[11px] text-slate-400 space-y-1">
+        <div className="bg-[#050505] p-3 rounded-lg border border-white/[0.08] text-[11px] text-zinc-400 space-y-1">
           <div className="font-semibold text-slate-300 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
             <span>W3C Standard Compliance</span>

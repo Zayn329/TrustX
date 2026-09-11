@@ -26,27 +26,30 @@ export const PassportView: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Header Profile Card */}
-      <div className="tx-surface-raised rounded-[2rem] p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div className="flex items-center space-x-4">
+      <div className="tx-surface-raised relative overflow-hidden rounded-xl p-6 sm:p-8">
+        <div className="absolute inset-x-0 top-0 h-px bg-[#D7FF3F]/45" />
+        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+        <div className="flex items-start space-x-4">
           <button
             onClick={() => { window.location.hash = '#dashboard'; }}
-            className="p-2 rounded-xl bg-slate-950/70 border border-slate-700/50 text-slate-400 hover:text-white transition-colors"
+            className="p-2 rounded-md bg-[#050505] border border-white/[0.08] text-zinc-400 hover:text-white transition-colors"
             title="Back to Dashboard Overview"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <div className="w-16 h-16 rounded-2xl bg-blue-400/10 border border-blue-300/20 flex items-center justify-center text-blue-300 font-bold text-xl flex-shrink-0">
+          <div className="w-16 h-16 rounded-lg bg-[#D7FF3F]/10 border border-[#D7FF3F]/20 flex items-center justify-center text-[#D7FF3F] font-bold text-xl flex-shrink-0">
             <UserCheck className="w-8 h-8" />
           </div>
           <div>
+            <div className="tx-kicker text-[#D7FF3F]/80">Verifiable Credential</div>
             <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-semibold tracking-[-0.05em] text-slate-100">{currentResearcher.name}</h1>
+              <h1 className="mt-2 text-3xl font-semibold text-zinc-100">{currentResearcher.name}</h1>
               <span className="status-pill status-success">
                 Verified Security Researcher
               </span>
             </div>
-            <div className="flex items-center gap-2 mt-1 text-xs text-slate-400 font-mono">
-              <Key className="w-3.5 h-3.5 text-slate-500" />
+            <div className="flex items-center gap-2 mt-2 text-xs text-zinc-400 font-mono break-all">
+              <Key className="w-3.5 h-3.5 text-zinc-500" />
               <span>{currentResearcher.id}</span>
             </div>
           </div>
@@ -55,28 +58,29 @@ export const PassportView: React.FC = () => {
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
           <button
             onClick={() => setIsCredentialModalOpen(true)}
-            className="inline-flex items-center gap-2 bg-blue-400 hover:bg-blue-300 text-slate-950 font-semibold text-xs px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-600/15"
+            className="inline-flex items-center gap-2 bg-[#D7FF3F] hover:bg-[#B8E638] text-[#050505] font-semibold text-xs px-4 py-2.5 rounded-md transition-all"
           >
             <QrCode className="w-4 h-4" />
             <span>Export W3C Credential</span>
           </button>
 
-          <div className="flex items-center gap-6 bg-slate-950/60 p-4 rounded-2xl border border-slate-700/50 w-full sm:w-auto justify-around">
+          <div className="flex items-center gap-6 bg-[#050505] p-4 rounded-lg border border-white/[0.08] w-full sm:w-auto justify-around">
             <div className="text-center">
-              <div className="text-[10px] text-slate-500 font-medium uppercase">Trust Score</div>
+              <div className="text-[10px] text-zinc-500 font-medium uppercase tracking-[0.14em]">Trust Score</div>
               <div className="text-xl font-semibold text-emerald-300 mt-0.5">{currentResearcher.trustScore} / 100</div>
             </div>
-            <div className="w-px h-8 bg-slate-800" />
+            <div className="w-px h-8 bg-white/[0.08]" />
             <div className="text-center">
-              <div className="text-[10px] text-slate-500 font-medium uppercase">Total Bounties</div>
-              <div className="text-xl font-bold text-slate-100 mt-0.5">{currentResearcher.successfulBountiesCount}</div>
+              <div className="text-[10px] text-zinc-500 font-medium uppercase tracking-[0.14em]">Total Bounties</div>
+              <div className="text-xl font-bold text-zinc-100 mt-0.5">{currentResearcher.successfulBountiesCount}</div>
             </div>
-            <div className="w-px h-8 bg-slate-800" />
+            <div className="w-px h-8 bg-white/[0.08]" />
             <div className="text-center">
-              <div className="text-[10px] text-slate-500 font-medium uppercase">Rewards Earned</div>
+              <div className="text-[10px] text-zinc-500 font-medium uppercase tracking-[0.14em]">Rewards Earned</div>
               <div className="text-xl font-semibold text-amber-200 mt-0.5">${currentResearcher.totalRewardsEarned.toLocaleString()}</div>
             </div>
           </div>
+        </div>
         </div>
       </div>
 
@@ -90,18 +94,18 @@ export const PassportView: React.FC = () => {
       />
 
       {/* Interactive Reputation Score Simulator (Category I Item 87) */}
-      <div className="tx-surface rounded-2xl p-6 space-y-5 sm:p-7">
-        <div className="flex flex-col gap-3 border-b border-slate-700/40 pb-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="tx-surface rounded-xl p-6 space-y-5 sm:p-7">
+        <div className="flex flex-col gap-3 border-b border-white/[0.07] pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
-            <Sliders className="w-5 h-5 text-blue-300" />
-            <div><div className="tx-kicker text-blue-300/70">Scenario lab · not your current score</div><h3 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-white">Reputation score simulator</h3></div>
+            <Sliders className="w-5 h-5 text-[#D7FF3F]" />
+            <div><div className="tx-kicker text-[#D7FF3F]/70">SIMULATED / not your current score</div><h3 className="mt-1 text-xl font-semibold text-white">Reputation score simulator</h3></div>
           </div>
-          <span className="status-pill border-blue-300/20 bg-blue-400/10 text-blue-200">
+          <span className="status-pill border-[#D7FF3F]/20 bg-[#D7FF3F]/10 text-[#D7FF3F]">
             Simulated Score: {simulatedScore} / 100
           </span>
         </div>
 
-        <p className="text-sm leading-6 text-slate-400">
+        <p className="text-sm leading-6 text-zinc-400">
           Adjust the sliders below to test how submitting verified bounties dynamically impacts portable reputation scores in real time.
         </p>
 
@@ -117,14 +121,14 @@ export const PassportView: React.FC = () => {
               max="5"
               value={simCriticalCount}
               onChange={e => setSimCriticalCount(Number(e.target.value))}
-              className="w-full accent-indigo-500"
+              className="w-full accent-[#D7FF3F]"
             />
           </div>
 
           <div className="space-y-2">
             <div className="flex justify-between text-xs font-semibold text-slate-300">
               <span>High Severity Reports</span>
-              <span className="font-mono text-sky-400">{simHighCount} (+{simHighCount * 8} pts)</span>
+              <span className="font-mono text-[#D7FF3F]">{simHighCount} (+{simHighCount * 8} pts)</span>
             </div>
             <input
               type="range"
@@ -132,7 +136,7 @@ export const PassportView: React.FC = () => {
               max="8"
               value={simHighCount}
               onChange={e => setSimHighCount(Number(e.target.value))}
-              className="w-full accent-indigo-500"
+              className="w-full accent-[#D7FF3F]"
             />
           </div>
 
@@ -147,15 +151,15 @@ export const PassportView: React.FC = () => {
               max="3"
               value={simPenaltyCount}
               onChange={e => setSimPenaltyCount(Number(e.target.value))}
-              className="w-full accent-rose-500"
+              className="w-full accent-[#D7FF3F]"
             />
           </div>
         </div>
       </div>
 
       {/* Verified On-Chain Reputation History (Issue 23) */}
-      <div className="tx-surface rounded-2xl p-6 sm:p-7">
-        <div className="tx-kicker">Reputation provenance</div><h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-white mb-5">Reputation event log</h3>
+      <div className="tx-surface rounded-xl p-6 sm:p-7">
+        <div className="tx-kicker">Reputation provenance</div><h3 className="mt-2 text-xl font-semibold text-white mb-5">Reputation event log</h3>
         <div className="space-y-3">
           {reputationEvents.map(evt => {
             const isPositive = evt.delta >= 0;
@@ -163,7 +167,7 @@ export const PassportView: React.FC = () => {
             return (
               <div
                 key={evt.id}
-                className="bg-slate-950/55 p-4 rounded-xl border border-slate-700/40 flex items-center justify-between text-xs transition-all hover:bg-slate-900/60"
+                className="bg-[#050505] p-4 rounded-lg border border-white/[0.08] flex flex-col gap-3 text-xs transition-all hover:bg-white/[0.03] sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="space-y-1">
                   <div className="font-semibold text-slate-200 flex items-center gap-2">
@@ -174,8 +178,8 @@ export const PassportView: React.FC = () => {
                     )}
                     <span>{evt.reason}</span>
                   </div>
-                  <div className="font-mono text-[10px] text-slate-500">
-                    Tx: {evt.txHash} • {new Date(evt.timestamp).toLocaleString()}
+                  <div className="font-mono text-[10px] text-zinc-500 break-all">
+                    Tx: {evt.txHash} / {new Date(evt.timestamp).toLocaleString()}
                   </div>
                 </div>
 

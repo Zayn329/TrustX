@@ -13,7 +13,7 @@ import { ScrollToTop } from './components/ui/ScrollToTop';
 import { ToastContainer } from './components/ui/ToastContainer';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { OnboardingTour } from './components/ui/OnboardingTour';
-import { ChevronRight, Home } from 'lucide-react';
+import { ChevronRight, Home, Menu } from 'lucide-react';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<ViewTab>(() => {
@@ -23,6 +23,7 @@ export function App() {
   });
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   // Sync state with URL hash and page document title
@@ -84,8 +85,11 @@ export function App() {
   return (
     <TrustProvider>
       <ErrorBoundary>
-        <div className="min-h-screen bg-[#060a13] text-slate-100 flex flex-col font-sans">
-          <Header onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} />
+        <div className="min-h-screen bg-[#050505] text-[#F5F5F2] flex flex-col font-sans">
+          <Header
+            onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+            onOpenMobileNav={() => setIsMobileNavOpen(true)}
+          />
 
           <div className="flex flex-1 w-full relative">
             {/* Sidebar Workspace Navigation */}
@@ -94,24 +98,33 @@ export function App() {
               setActiveTab={setActiveTab}
               isCollapsed={isSidebarCollapsed}
               setIsCollapsed={setIsSidebarCollapsed}
+              mobileOpen={isMobileNavOpen}
+              setMobileOpen={setIsMobileNavOpen}
             />
 
             {/* Main Content Workspace Container */}
             <div className="flex-1 flex flex-col min-w-0">
               {/* Breadcrumb Navigation Trail Bar */}
-              <div className="bg-slate-950/45 border-b border-slate-800/60 px-4 sm:px-6 lg:px-10 py-3 flex items-center gap-2 text-[11px] text-slate-500">
+              <div className="border-b border-white/[0.07] bg-[#0B0B0B]/85 px-4 sm:px-6 lg:px-10 py-3 flex items-center gap-2 text-[11px] text-zinc-500 backdrop-blur-xl">
+                <button
+                  onClick={() => setIsMobileNavOpen(true)}
+                  className="mr-1 inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/[0.08] text-zinc-400 hover:text-[#D7FF3F] lg:hidden"
+                  aria-label="Open workspace navigation"
+                >
+                  <Menu className="h-4 w-4" />
+                </button>
                 <button
                   onClick={() => setActiveTab('dashboard')}
-                  className="hover:text-slate-200 flex items-center gap-1.5 transition-colors"
+                  className="hover:text-[#F5F5F2] flex items-center gap-1.5 transition-colors"
                 >
-                  <Home className="w-3.5 h-3.5 text-blue-300" />
-                  <span className="font-medium text-slate-400">TrustX</span>
+                  <Home className="w-3.5 h-3.5 text-[#D7FF3F]" />
+                  <span className="font-medium text-zinc-400">TrustX</span>
                 </button>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
-                <span className="text-slate-200 font-medium">{viewLabels[activeTab]}</span>
+                <ChevronRight className="w-3.5 h-3.5 text-zinc-700" />
+                <span className="text-zinc-200 font-medium">{viewLabels[activeTab]}</span>
               </div>
 
-              <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10">
+              <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-7 sm:py-10">
                 {renderActiveView()}
               </main>
             </div>

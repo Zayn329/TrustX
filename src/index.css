@@ -6,16 +6,19 @@
 
 :root {
   color-scheme: dark;
-  --tx-bg: #060a13;
-  --tx-surface: #0b1220;
-  --tx-surface-raised: #101a2b;
-  --tx-inset: #070d18;
-  --tx-line: rgba(148, 163, 184, 0.14);
-  --tx-line-strong: rgba(148, 163, 184, 0.23);
-  --tx-text: #edf3fb;
-  --tx-muted: #91a0b5;
-  --tx-accent: #66a8ff;
-  --tx-accent-soft: rgba(74, 144, 255, 0.12);
+  --tx-bg: #050505;
+  --tx-charcoal: #0b0b0b;
+  --tx-surface: #111111;
+  --tx-surface-raised: #161616;
+  --tx-inset: #090909;
+  --tx-line: rgba(255, 255, 255, 0.07);
+  --tx-line-strong: rgba(255, 255, 255, 0.11);
+  --tx-text: #f5f5f2;
+  --tx-muted: #a1a1a1;
+  --tx-subtle: #6f6f6f;
+  --tx-accent: #d7ff3f;
+  --tx-accent-2: #b8e638;
+  --tx-accent-deep: #7fae22;
 }
 
 * {
@@ -29,8 +32,10 @@ html {
 body {
   font-family: 'Inter', sans-serif;
   background:
-    radial-gradient(circle at 70% -20%, rgba(47, 93, 167, 0.17), transparent 34rem),
+    linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px),
     var(--tx-bg);
+  background-size: auto, 42px 42px, 42px 42px;
   color: var(--tx-text);
   min-width: 320px;
 }
@@ -48,31 +53,34 @@ textarea {
 
 @layer components {
   .tx-surface {
-    @apply border border-slate-700/40 bg-slate-900/70 shadow-[0_18px_60px_rgba(0,0,0,0.16)];
+    background: var(--tx-surface);
+    border: 1px solid var(--tx-line);
   }
 
   .tx-surface-raised {
-    @apply border border-slate-600/40 bg-slate-800/55 shadow-[0_22px_70px_rgba(0,0,0,0.2)];
+    background: var(--tx-surface-raised);
+    border: 1px solid var(--tx-line-strong);
   }
 
   .tx-inset {
-    @apply border border-slate-700/35 bg-slate-950/60;
+    background: var(--tx-inset);
+    border: 1px solid var(--tx-line);
   }
 
   .tx-kicker {
-    @apply text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500;
+    @apply text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500;
   }
 
   .tx-page-title {
-    @apply text-3xl font-semibold tracking-[-0.04em] text-slate-50 sm:text-4xl;
+    @apply text-3xl font-semibold tracking-normal text-[#F5F5F2] sm:text-4xl;
   }
 
   .tx-muted {
-    @apply text-slate-400;
+    @apply text-zinc-400;
   }
 
   .tx-focus-ring {
-    @apply focus:outline-none focus:ring-2 focus:ring-blue-400/35 focus:ring-offset-2 focus:ring-offset-slate-950;
+    @apply focus:outline-none focus:ring-2 focus:ring-[#D7FF3F]/35 focus:ring-offset-2 focus:ring-offset-[#050505];
   }
 
   .status-pill {
@@ -93,6 +101,19 @@ textarea {
 }
 
 ::selection {
-  background: rgba(74, 144, 255, 0.35);
-  color: white;
+  background: rgba(215, 255, 63, 0.35);
+  color: #050505;
+}
+
+@layer utilities {
+  .tx-grid {
+    background-image:
+      linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+    background-size: 36px 36px;
+  }
+
+  .tx-technical-value {
+    @apply break-all font-mono text-[11px] leading-5 text-zinc-300;
+  }
 }
