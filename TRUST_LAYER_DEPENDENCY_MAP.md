@@ -11,7 +11,7 @@ The analysis validates the architectural observation:
 
 The Trust Layer is intentionally designed as a **hybrid architecture**:
 1. **Deterministic / React State / UI-Driven Layer**: Provides instant, zero-latency local state updates, mock fallbacks, and SVG/UI visualizations for immediate academic/demo execution without requiring live blockchain RPCs or external backends.
-2. **Production-Ready Cryptographic & Smart Contract Infrastructure**: Implements native browser Web Crypto API (SHA-256, AES-256-GCM), W3C DID Document resolution, W3C JSON-LD Verifiable Credentials, Solidity 0.8.20 smart contracts (`TrustBountyEscrow`, `ReputationRegistry`, `DisputeArbitration`), IPFS base32 CIDv1 pinning, and GraphQL indexing schemas.
+2. **Production-Ready Cryptographic & Smart Contract Infrastructure**: Implements native browser Web Crypto API (SHA-256, AES-256-GCM), W3C DID Document resolution, W3C JSON-LD Verifiable Credentials, Solidity 0.8.20 smart contracts (`TrustBountyEscrow`, `ReputationRegistry`, `DisputeArbitration`), Remix IDE deployment & EIP-712 wallet signing (`eth_signTypedData_v4`), IPFS base32 CIDv1 pinning, and GraphQL indexing schemas.
 
 ---
 
@@ -36,7 +36,7 @@ The Trust Layer is intentionally designed as a **hybrid architecture**:
 │   ┌─────────────────────────────────────────┐  ┌─────────────────────────────────┐  ┌───────────────────────────────┐ │
 │   │ TrustContext.tsx                        │  │ useEscrowContract.ts            │  │ useArbitrationStore.ts        │ │
 │   │ - Central React State                   │  │ - Web3 Wallet Provider          │  │ - Juror Court State           │ │
-│   │ - Initial Mock Datasets (mockData.ts)   │  │ - Window EIP-1193 / Fallback    │  │ - Quorum Resolution           │ │
+│   │ - Initial Mock Datasets (mockData.ts)   │  │ - EIP-712 Wallet Signing        │  │ - Quorum Resolution           │ │
 │   │ - submitVulnerability / verify / dispute│  └────────────────┬────────────────┘  └───────────────┬───────────────┘ │
 │   └────────────────────┬────────────────────┘                   │                                   │                 │
 │                        │                                        │                                   │                 │
@@ -66,7 +66,7 @@ The Trust Layer is intentionally designed as a **hybrid architecture**:
                                            │
                                            ▼
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                        ON-CHAIN SMART CONTRACTS (EVM / SOLIDITY)                                       │
+│                                REMIX-DEPLOYED ON-CHAIN SMART CONTRACTS (EVM / SOLIDITY)                                │
 │                                                                                                                        │
 │  ┌───────────────────────────────┐   ┌───────────────────────────────┐   ┌──────────────────────────────────────────┐  │
 │  │ TrustBountyEscrow.sol         │   │ ReputationRegistry.sol        │   │ DisputeArbitration.sol                   │  │
@@ -82,17 +82,17 @@ The Trust Layer is intentionally designed as a **hybrid architecture**:
 | Subsystem Component | Primary File(s) | Incoming Dependencies | Outgoing Dependencies | Real vs. Deterministic/UI Nature |
 | :--- | :--- | :--- | :--- | :--- |
 | **Domain Model & Types** | `src/domain/types.ts` | All files | None | **Pure Definition**: Strict TypeScript interfaces for Identities, Proofs, Escrows, Verifications, Disputes. |
-| **Cryptography Utilities** | `src/domain/cryptoUtils.ts` | `TrustContext`, `SubmitVulnerabilityModal`, `ipfsService`, `vcManager` | Native Web Crypto (`crypto.subtle`) | **Hybrid**: Real native Web Crypto SHA-256 hashing; deterministic fallback for ECDSA signature and TxHash generation when offline. |
+| **Cryptography Utilities** | `src/domain/cryptoUtils.ts` | `TrustContext`, `SubmitVulnerabilityModal`, `ipfsService`, `vcManager` | Native Web Crypto (`crypto.subtle`) | **Hybrid**: Real native Web Crypto SHA-256 hashing; EIP-712 signature prompt (`eth_signTypedData_v4`) with deterministic fallback when offline. |
 | **Seed Data / Mock State** | `src/domain/mockData.ts` | `TrustContext.tsx` | `types.ts` | **Deterministic**: Cross-linked static dataset representing 5 identities, 3 bounties, submissions, proofs, and blockchain events. |
 | **Central React Store** | `src/store/TrustContext.tsx` | App Views (`DashboardView`, `BountiesView`, `PassportView`, etc.) | `types.ts`, `mockData.ts`, `cryptoUtils.ts` | **Deterministic UI State**: Maintains local React state (`useState`), synchronizing claims, proofs, and events instantly. Checks `window.ethereum` first, falling back to simulated execution. |
-| **Web3 Escrow Hook** | `src/blockchain/useEscrowContract.ts` | `BountyDetailModal`, `SubmitVulnerabilityModal` | `wagmiConfig.ts`, `TrustBountyEscrow.sol` ABI | **Hybrid**: Executes live EIP-1193 transactions when `window.ethereum` is available; returns simulated tx hashes on rejection/fallback. |
+| **Web3 Escrow Hook** | `src/blockchain/useEscrowContract.ts` | `BountyDetailModal`, `SubmitVulnerabilityModal` | `wagmiConfig.ts`, `TrustBountyEscrow.sol` ABI | **Hybrid**: Executes live EIP-1193 transactions against Remix-deployed contract addresses when `window.ethereum` is available; returns simulated tx hashes on rejection/fallback. |
 | **DID Resolver** | `src/identity/didResolver.ts` | `vcManager.ts`, `PassportView.tsx` | `types.ts` | **Real Specs / Deterministic Key Gen**: Parses `did:trust`, `did:ethr`, `did:key`, `did:pkh` into W3C JSON Web Key (JWK) DID documents. |
 | **Verifiable Credentials** | `src/identity/vcManager.ts` | `PassportView.tsx`, `CredentialQRModal.tsx` | `didResolver.ts`, `cryptoUtils.ts` | **Real Specs**: Issues and verifies W3C JSON-LD Verifiable Credentials with JWS cryptographic signatures. |
 | **IPFS Storage Service** | `src/services/ipfsService.ts` | `SubmitVulnerabilityModal.tsx` | `cryptoUtils.ts` | **Hybrid**: Executes client AES-256-GCM Web Crypto encryption and Base32 CIDv1 multihashing; connects to Pinata API when JWT key is present. |
 | **Oracle Sandbox Engine** | `oracle/sandboxRunner.ts` | `OracleVerificationBadge.tsx`, `ExplorerView.tsx` | `cryptoUtils.ts` | **Deterministic Analysis**: Performs AST static regex pattern matching (reentrancy, overflow, access control) and computes coverage metrics in JS runtime. |
 | **Juror Arbitration Store**| `src/store/useArbitrationStore.ts` | `ArbitrationCourtView.tsx` | `types.ts`, `DisputeArbitration.sol` | **Deterministic UI State**: Manages juror court votes, staking state, and 3-vote resolution quorum in React state. |
 | **Ledger / Graph Indexer** | `src/store/useIndexedLedger.ts` | `NetworkView.tsx` | `subgraph/schema.graphql` | **Hybrid**: Queries live GraphQL endpoint if `VITE_SUBGRAPH_ENDPOINT` is configured; falls back to `TrustContext` event stream buffer. |
-| **Smart Contracts** | `contracts/*.sol` | Deploy scripts, hardhat tests | OpenZeppelin, Solidity 0.8.20 | **Real On-Chain Logic**: Fully functional Solidity contracts (`TrustBountyEscrow`, `ReputationRegistry`, `DisputeArbitration`) ready for EVM deployment. |
+| **Smart Contracts** | `contracts/*.sol` | Deploy scripts, Remix IDE, hardhat tests | OpenZeppelin, Solidity 0.8.20 | **Real On-Chain Logic**: Fully functional Solidity contracts (`TrustBountyEscrow`, `ReputationRegistry`, `DisputeArbitration`) compiled & deployed via Remix IDE to Sepolia/Arbitrum. |
 
 ---
 
@@ -119,7 +119,7 @@ In Web3 and trust infrastructure, frontend applications must remain functional f
                         YES       │                │ NO / DECLINED
                                   ▼                ▼
          ┌─────────────────────────────────┐   ┌──────────────────────────────────┐
-         │ Execute EVM Smart Contract      │   │ Execute Local Deterministic      │
+         │ Execute Remix-Deployed Contract │   │ Execute Local Deterministic      │
          │ Transaction on Sepolia/Arbitrum │   │ Web Crypto & React State Update  │
          └────────────────┬────────────────┘   └──────────────────┬───────────────┘
                           │                                       │
@@ -127,7 +127,7 @@ In Web3 and trust infrastructure, frontend applications must remain functional f
                                               │
                                               ▼
                          ┌─────────────────────────────────┐
-                         │  Update UI Views Dynamically    │
+                         │  Update UI Views & Trust Graph  │
                          └─────────────────────────────────┘
 ```
 
@@ -147,7 +147,7 @@ npm test
 npm run build
 ```
 
-### 3. Deploy Smart Contracts to Sepolia Testnet
+### 3. Deploy Smart Contracts via Remix IDE / Hardhat
 ```bash
 npx hardhat run scripts/deploy.ts --network sepolia
 ```
