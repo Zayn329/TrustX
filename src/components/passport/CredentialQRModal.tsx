@@ -44,21 +44,21 @@ export const CredentialQRModal: React.FC<CredentialQRModalProps> = ({ isOpen, on
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn"
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn"
     >
       <div
         onClick={e => e.stopPropagation()}
-        className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-6 relative shadow-2xl"
+        className="bg-[#111111] border border-white/[0.09] rounded-xl max-w-md w-full p-6 space-y-6 relative"
       >
         <button
           onClick={onClose}
-          className="absolute top-6 right-6 text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800 transition-colors"
+          className="absolute top-6 right-6 text-zinc-400 hover:text-zinc-200 p-1 rounded-md hover:bg-white/[0.06] transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-indigo-600/20 rounded-xl border border-indigo-500/30 text-indigo-400">
+          <div className="p-3 bg-[#D7FF3F]/10 rounded-lg border border-[#D7FF3F]/20 text-[#D7FF3F]">
             <QrCode className="w-6 h-6" />
           </div>
           <div>

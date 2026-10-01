@@ -37,15 +37,15 @@ export const VerificationTimeline: React.FC<VerificationTimelineProps> = ({ curr
   const activeIdx = getStageIndex(currentStage);
 
   return (
-    <div className="tx-surface rounded-2xl p-6 sm:p-7">
-      <div className="flex items-end justify-between gap-4"><div><div className="tx-kicker">Proof lifecycle</div><h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-white">Where the contribution stands</h3></div><span className="hidden text-xs text-slate-500 sm:block">Completed · current · next</span></div>
+    <div className="tx-surface rounded-xl p-6 sm:p-7">
+      <div className="flex items-end justify-between gap-4"><div><div className="tx-kicker">Proof lifecycle</div><h3 className="mt-2 text-xl font-semibold text-white">Where the contribution stands</h3></div><span className="hidden text-xs text-zinc-500 sm:block">Completed / current / next</span></div>
 
       <div className="relative mt-7 overflow-x-auto scrollbar-none pb-2">
         <div className="flex min-w-[620px] items-start justify-between px-2 sm:min-w-0">
           {/* Connecting Base Line */}
-          <div className="absolute top-5 left-8 right-8 h-0.5 bg-slate-800 -z-0" />
+          <div className="absolute top-5 left-8 right-8 h-px bg-white/[0.08] -z-0" />
           <div
-            className="absolute top-5 left-8 h-0.5 bg-indigo-500 transition-all duration-500 -z-0 shadow-sm shadow-indigo-500/50"
+            className="absolute top-5 left-8 h-px bg-[#D7FF3F] transition-all duration-500 -z-0"
             style={{ width: `${(activeIdx / (stages.length - 1)) * 90}%` }}
           />
 
@@ -58,19 +58,19 @@ export const VerificationTimeline: React.FC<VerificationTimelineProps> = ({ curr
               <div
                   className={`flex h-10 w-10 items-center justify-center rounded-full transition-all ${
                     isPassed
-                      ? 'bg-blue-400 text-slate-950 shadow-lg shadow-blue-600/20'
-                      : 'bg-slate-950 text-slate-600 border border-slate-800'
-                  } ${isCurrent ? 'ring-4 ring-indigo-500/30 border-2 border-indigo-400 animate-pulse' : ''}`}
+                      ? 'bg-[#D7FF3F] text-[#050505]'
+                      : 'bg-[#050505] text-zinc-600 border border-white/[0.08]'
+                  } ${isCurrent ? 'ring-4 ring-[#D7FF3F]/15 border border-[#D7FF3F]' : ''}`}
                 >
                   {stage.icon}
                 </div>
                   <span
                   className={`mt-3 text-xs whitespace-nowrap transition-colors ${
                     isCurrent
-                      ? 'text-blue-200 font-bold'
+                      ? 'text-[#D7FF3F] font-bold'
                       : isPassed
-                      ? 'text-slate-200 font-semibold'
-                      : 'text-slate-500'
+                      ? 'text-zinc-200 font-semibold'
+                      : 'text-zinc-500'
                   }`}
                 >
                   {stage.label}

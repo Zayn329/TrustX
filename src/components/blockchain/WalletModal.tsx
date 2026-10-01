@@ -26,31 +26,31 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xl flex items-center justify-center p-4 animate-fadeIn"
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn"
     >
       <div
         onClick={e => e.stopPropagation()}
-        className="bg-[#0b1220] border border-slate-600/40 rounded-[1.75rem] max-w-md w-full p-6 space-y-6 relative shadow-[0_30px_100px_rgba(0,0,0,0.45)]"
+        className="bg-[#111111] border border-white/[0.09] rounded-xl max-w-md w-full p-6 space-y-6 relative"
       >
         <button
           onClick={onClose}
-          className="absolute top-6 right-6 text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800 transition-colors"
+          className="absolute top-6 right-6 text-zinc-400 hover:text-zinc-200 p-1 rounded-md hover:bg-white/[0.06] transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
         <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-400/10 rounded-xl border border-blue-300/20 text-blue-300">
+            <div className="p-3 bg-[#D7FF3F]/10 rounded-lg border border-[#D7FF3F]/20 text-[#D7FF3F]">
             <Wallet className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-100">Web3 Wallet Connection</h3>
-            <p className="text-xs text-slate-400">Phase 4: EVM Smart Contract Integration</p>
+            <h3 className="text-lg font-bold text-zinc-100">Infrastructure Wallet Connection</h3>
+            <p className="text-xs text-zinc-400">DEMO PROTOCOL / EVM smart contract integration</p>
           </div>
         </div>
 
         {wallet.isConnected ? (
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+          <div className="bg-[#050505] p-4 rounded-lg border border-white/[0.08] space-y-3">
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-400">Connected Wallet</span>
               <span className="text-emerald-400 font-semibold flex items-center gap-1">
@@ -62,7 +62,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
             </div>
             <div className="flex justify-between text-xs pt-1">
               <span className="text-slate-400">Sepolia Balance:</span>
-              <span className="font-bold text-indigo-400">{wallet.balance}</span>
+              <span className="font-bold text-[#D7FF3F]">{wallet.balance}</span>
             </div>
             <button
               onClick={disconnectWallet}
@@ -76,13 +76,13 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
             <button
               onClick={connectWallet}
               disabled={isPending}
-              className="w-full flex items-center justify-between p-4 bg-slate-950 hover:bg-slate-800/80 rounded-xl border border-slate-800 text-slate-200 font-semibold text-xs transition-all"
+              className="w-full flex items-center justify-between p-4 bg-[#050505] hover:bg-white/[0.05] rounded-lg border border-white/[0.08] text-zinc-200 font-semibold text-xs transition-all"
             >
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-blue-300" />
+                <ShieldCheck className="w-4 h-4 text-[#D7FF3F]" />
                 <span>MetaMask / EVM Wallet</span>
               </div>
-              <span className="text-xs text-indigo-400 font-mono">
+              <span className="text-xs text-[#D7FF3F] font-mono">
                 {isPending ? 'Connecting...' : 'Connect'}
               </span>
             </button>

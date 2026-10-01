@@ -43,13 +43,13 @@ export const ToastContainer: React.FC = () => {
               ? 'bg-emerald-950/90 border-emerald-500/30 text-emerald-200'
               : t.type === 'error'
               ? 'bg-rose-950/90 border-rose-500/30 text-rose-200'
-              : 'bg-indigo-950/90 border-indigo-500/30 text-indigo-200'
+              : 'bg-rose-950/90 border-rose-500/30 text-rose-200'
           }`}
         >
           <div className="flex items-start gap-2.5">
             {t.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />}
             {t.type === 'error' && <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />}
-            {t.type === 'info' && <Info className="w-5 h-5 text-indigo-400 flex-shrink-0 mt-0.5" />}
+            {t.type === 'info' && <Info className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />}
 
             <div>
               <div className="text-xs font-bold">{t.title}</div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   LayoutDashboard,
   Target,
@@ -8,7 +8,6 @@ import {
   Activity,
   ChevronLeft,
   ChevronRight,
-  Menu,
   X,
   ShieldCheck
 } from 'lucide-react';
@@ -21,16 +20,19 @@ interface NavbarProps {
   setActiveTab: (tab: ViewTab) => void;
   isCollapsed?: boolean;
   setIsCollapsed?: (collapsed: boolean) => void;
+  mobileOpen?: boolean;
+  setMobileOpen?: (open: boolean) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   isCollapsed = false,
-  setIsCollapsed
+  setIsCollapsed,
+  mobileOpen = false,
+  setMobileOpen
 }) => {
   const { bounties, blockchainEvents, reports } = useTrust();
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   const navItems: {
     id: ViewTab;
@@ -82,36 +84,21 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const handleTabClick = (id: ViewTab) => {
     setActiveTab(id);
-    setMobileOpen(false);
+    setMobileOpen?.(false);
   };
 
   return (
     <>
-      {/* Mobile Top Navigation Bar Toggle */}
-      <div className="lg:hidden bg-[#080d18] border-b border-slate-700/40 px-4 py-3 flex items-center justify-between sticky top-[4.5rem] z-30">
-        <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle Menu"
-          className="inline-flex items-center gap-2 text-slate-300 hover:text-white bg-slate-800/80 px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700/60"
-        >
-          {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-          <span>Workspace Menu</span>
-        </button>
-        <div className="text-[11px] font-semibold text-blue-300 capitalize">
-          {navItems.find(i => i.id === activeTab)?.label}
-        </div>
-      </div>
-
       {/* Desktop Sidebar Container */}
       <aside
-        className={`hidden lg:flex flex-col bg-[#080d18]/92 border-r border-slate-700/40 transition-all duration-300 sticky top-[4.5rem] h-[calc(100vh-4.5rem)] z-30 select-none ${
+        className={`hidden lg:flex flex-col bg-[#0B0B0B]/92 border-r border-white/[0.07] transition-all duration-300 sticky top-16 h-[calc(100vh-4rem)] z-30 select-none ${
           isCollapsed ? 'w-20' : 'w-64'
         }`}
       >
         {/* Navigation Section */}
         <div className="flex-1 py-4 px-3 space-y-1.5 overflow-y-auto">
           {!isCollapsed && (
-            <div className="px-3 py-3 text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-slate-600">
+            <div className="px-3 py-3 text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-zinc-600">
               Workspace
             </div>
           )}
@@ -123,20 +110,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                 key={item.id}
                 onClick={() => handleTabClick(item.id)}
                 title={isCollapsed ? item.label : undefined}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all group ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-md text-xs font-medium transition-all group ${
                   isActive
-                    ? 'bg-blue-400/10 text-blue-200 border border-blue-300/20 shadow-[0_8px_24px_rgba(50,120,220,0.12)]'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/55 border border-transparent'
+                    ? 'bg-[#D7FF3F]/10 text-[#D7FF3F] border border-[#D7FF3F]/20'
+                    : 'text-zinc-500 hover:text-zinc-100 hover:bg-white/[0.04] border border-transparent'
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
-                    <div className={`${isActive ? 'text-blue-300' : 'text-slate-500 group-hover:text-slate-200'}`}>
+                    <div className={`${isActive ? 'text-[#D7FF3F]' : 'text-zinc-600 group-hover:text-zinc-200'}`}>
                     {item.icon}
                   </div>
                   {!isCollapsed && (
                     <div className="text-left truncate">
                       <div className="font-semibold leading-tight truncate">{item.label}</div>
-                      <div className="text-[10px] text-slate-500 group-hover:text-slate-400 truncate">{item.description}</div>
+                      <div className="text-[10px] text-zinc-600 group-hover:text-zinc-500 truncate">{item.description}</div>
                     </div>
                   )}
                 </div>
@@ -145,8 +132,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span
                     className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                       isActive
-                        ? 'bg-blue-400/15 text-blue-200 border-blue-300/25'
-                        : 'bg-slate-800/80 text-slate-400 border-slate-700/70'
+                        ? 'bg-[#D7FF3F]/15 text-[#D7FF3F] border-[#D7FF3F]/25'
+                        : 'bg-[#111111] text-zinc-500 border-white/[0.08]'
                     }`}
                   >
                     {item.badge}
@@ -158,16 +145,16 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Sidebar Footer Collapse Toggle */}
-        <div className="p-3 border-t border-slate-800/80 bg-slate-950/40">
+        <div className="p-3 border-t border-white/[0.07] bg-[#050505]/40">
           <button
             onClick={() => setIsCollapsed && setIsCollapsed(!isCollapsed)}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 rounded-lg transition-all"
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-medium text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04] rounded-md transition-all"
           >
             {isCollapsed ? (
-              <ChevronRight className="w-4 h-4 text-indigo-400" />
+              <ChevronRight className="w-4 h-4 text-[#D7FF3F]" />
             ) : (
               <>
-                <ChevronLeft className="w-4 h-4 text-indigo-400" />
+                <ChevronLeft className="w-4 h-4 text-[#D7FF3F]" />
                 <span>Collapse Sidebar</span>
               </>
             )}
@@ -177,16 +164,16 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Mobile Slide-Over Drawer Overlay */}
       {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex">
-          <div className="bg-slate-900 border-r border-slate-800 w-72 max-w-[80%] h-full p-4 flex flex-col space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="lg:hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex">
+          <div className="bg-[#0B0B0B] border-r border-white/[0.08] w-72 max-w-[82%] h-full p-4 flex flex-col space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-indigo-400" />
-                <span className="font-bold text-slate-100 text-sm">Trust Engine Navigation</span>
+                <ShieldCheck className="w-5 h-5 text-[#D7FF3F]" />
+                <span className="font-bold text-zinc-100 text-sm">TrustX Workspace</span>
               </div>
               <button
-                onClick={() => setMobileOpen(false)}
-                className="text-slate-400 hover:text-white p-1"
+                onClick={() => setMobileOpen?.(false)}
+                className="text-zinc-500 hover:text-white p-1"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -199,10 +186,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <button
                     key={item.id}
                     onClick={() => handleTabClick(item.id)}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-md text-xs font-medium transition-all ${
                       isActive
-                        ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
-                        : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
+                        ? 'bg-[#D7FF3F]/10 text-[#D7FF3F] border border-[#D7FF3F]/25'
+                        : 'text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.04]'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -210,7 +197,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <span className="font-semibold">{item.label}</span>
                     </div>
                     {item.badge !== undefined && (
-                      <span className="bg-slate-800 text-slate-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-700">
+                      <span className="bg-[#111111] text-zinc-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/[0.08]">
                         {item.badge}
                       </span>
                     )}
@@ -219,7 +206,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               })}
             </div>
           </div>
-          <div className="flex-1" onClick={() => setMobileOpen(false)} />
+          <div className="flex-1" onClick={() => setMobileOpen?.(false)} />
         </div>
       )}
     </>
