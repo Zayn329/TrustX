@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import {
   Identity,
   Bounty,
@@ -24,6 +24,7 @@ import {
   INITIAL_SYBIL_RISK
 } from '../domain/mockData';
 import { sha256, generateRealTxHash, generateEcdsaSignature } from '../domain/cryptoUtils';
+import { getBounties, createBounty } from '../services/firestoreService';
 
 interface NewSubmissionPayload {
   bountyId: string;
@@ -35,6 +36,7 @@ interface NewSubmissionPayload {
   reproductionSteps: string;
   impact: string;
   evidence: string;
+  createdAt: string;
 }
 
 interface TrustContextType {
@@ -49,9 +51,18 @@ interface TrustContextType {
   disputes: Dispute[];
   sybilRisks: SybilRiskSignal[];
   currentResearcher: Identity;
+  // UI state for modals
+  createBountyModalOpen: boolean;
+  createBountyForm: Omit<Bounty, 'id'>;
+  createBountyLoading: boolean;
+  createBountyError: string | null;
+  // Functions
   submitVulnerability: (payload: NewSubmissionPayload) => Promise<void>;
   verifySubmission: (reportId: string, isApproved: boolean, notes: string) => Promise<void>;
   raiseDispute: (reportId: string, reason: string, evidence: string) => Promise<void>;
+  openCreateBountyModal: () => void;
+  closeCreateBountyModal: () => void;
+  handleCreateBounty: (formData: Omit<Bounty, 'id'>) => Promise<void>;
 }
 
 const TrustContext = createContext<TrustContextType | undefined>(undefined);
@@ -64,7 +75,7 @@ const ESCROW_CONTRACT_ADDRESS =
 
 export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [identities, setIdentities] = useState<Identity[]>(INITIAL_IDENTITIES);
-  const [bounties] = useState<Bounty[]>(INITIAL_BOUNTIES);
+  const [bounties, setBounties] = useState<Bounty[]>([]);
   const [reports, setReports] = useState<VulnerabilityReport[]>(INITIAL_REPORTS);
   const [proofs, setProofs] = useState<Proof[]>(INITIAL_PROOFS);
   const [verifications, setVerifications] = useState<Verification[]>(INITIAL_VERIFICATIONS);
@@ -73,8 +84,44 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [blockchainEvents, setBlockchainEvents] = useState<BlockchainEvent[]>(INITIAL_BLOCKCHAIN_EVENTS);
   const [disputes, setDisputes] = useState<Dispute[]>(INITIAL_DISPUTES);
   const [sybilRisks] = useState<SybilRiskSignal[]>(INITIAL_SYBIL_RISK);
+  // Create bounty modal state
+  const [createBountyModalOpen, setCreateBountyModalOpen] = useState(false);
+  const [createBountyForm, setCreateBountyForm] = useState<Omit<Bounty, 'id'>>({
+    title: '',
+    organizationId: '',
+    organizationName: '',
+    organizationTrustScore: 50,
+    severity: 'Low' as const,
+    rewardAmount: 0,
+    rewardCurrency: 'USD',
+    scope: [],
+    rules: [],
+    deadline: '',
+    verificationRequirements: [],
+    status: 'active' as const,
+    escrowId: '',
+    description: ''
+  });
+  const [createBountyLoading, setCreateBountyLoading] = useState(false);
+  const [createBountyError, setCreateBountyError] = useState<string | null>(null);
 
   const currentResearcher = identities[0];
+
+  // Load bounties from Firestore on mount
+  useEffect(() => {
+    const loadBounties = async () => {
+      try {
+        const fetchedBounties = await getBounties();
+        setBounties(fetchedBounties);
+      } catch (err) {
+        // Error is already handled by the error boundary or logging, we can ignore for now
+        // Fallback to mock data
+        setBounties(INITIAL_BOUNTIES);
+      }
+    };
+
+    loadBounties();
+  }, []);
 
   /**
    * Registers a vulnerability submission on-chain or via EIP-1193 Web3 provider when available,
@@ -95,15 +142,15 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const contentHash = await sha256(rawContentToHash);
     const signature = generateEcdsaSignature(payload.researcherId, contentHash);
 
-    let txHashSub: string | undefined;
-    let txHashProof: string | undefined;
+    let txHashRep: string | undefined;
+    let txHashVer: string | undefined;
 
     // Attempt live on-chain registration if window.ethereum provider is available
     if (typeof window !== 'undefined' && window.ethereum) {
       try {
         const accounts = (await window.ethereum.request({ method: 'eth_accounts' })) as string[];
         if (accounts && accounts.length > 0) {
-          txHashSub = (await window.ethereum.request({
+          txHashRep = (await window.ethereum.request({
             method: 'eth_sendTransaction',
             params: [{ from: accounts[0], to: ESCROW_CONTRACT_ADDRESS, value: '0x0' }]
           })) as string;
@@ -113,8 +160,8 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     }
 
-    if (!txHashSub) txHashSub = generateRealTxHash();
-    if (!txHashProof) txHashProof = generateRealTxHash();
+    if (!txHashRep) txHashRep = generateRealTxHash();
+    if (!txHashVer) txHashVer = generateRealTxHash();
 
     const newProof: Proof = {
       id: proofId,
@@ -133,37 +180,62 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       verifierId: targetBounty?.organizationId || 'did:trust:verifier_org',
       verifierName: targetBounty?.organizationName || 'Bounty Reviewer',
       status: 'pending',
-      notes: 'Submitted report awaiting technical verification.'
-    };
-
-    const lastBlock = blockchainEvents[0]?.blockNumber || 18420101;
-
-    const eventSub: BlockchainEvent = {
-      id: `blk-${Date.now()}-1`,
-      eventType: 'SubmissionRegistered',
-      txHash: txHashSub,
-      blockNumber: lastBlock + 1,
-      timestamp: nowIso,
-      actor: payload.researcherId,
-      status: 'confirmed',
-      details: `Registered vulnerability report "${payload.title}"`
-    };
-
-    const eventProof: BlockchainEvent = {
-      id: `blk-${Date.now()}-2`,
-      eventType: 'ProofAnchored',
-      txHash: txHashProof,
-      blockNumber: lastBlock + 2,
-      timestamp: nowIso,
-      actor: payload.researcherId,
-      status: 'confirmed',
-      details: `Proof hash ${contentHash.slice(0, 12)}... anchored`
+      notes: 'Submitted report awaiting technical verification.',
+      verifiedAt: undefined
     };
 
     setReports(prev => [newReport, ...prev]);
     setProofs(prev => [newProof, ...prev]);
     setVerifications(prev => [newVerification, ...prev]);
-    setBlockchainEvents(prev => [eventProof, eventSub, ...prev]);
+
+    if (targetBounty) {
+      setEscrows(prev =>
+        prev.map(e =>
+          e.id === targetBounty.escrowId
+            ? { ...e, status: 'locked', researcherAddress: newReport.researcherId }
+            : e
+        )
+      );
+    }
+
+    setIdentities(prev =>
+      prev.map(id => {
+        if (id.id === newReport.researcherId) {
+          const rewardAmt = targetBounty ? targetBounty.rewardAmount : 5000;
+          return {
+            ...id,
+            trustScore: Math.min(100, id.trustScore + 3),
+            verifiedContributionsCount: id.verifiedContributionsCount + 1,
+            successfulBountiesCount: id.successfulBountiesCount + 1,
+            totalRewardsEarned: id.totalRewardsEarned + rewardAmt
+          };
+        }
+        return id;
+      })
+    );
+
+    const newRepEvent: ReputationEvent = {
+      id: `repevt-${Date.now()}`,
+      researcherId: newReport.researcherId,
+      delta: 3,
+      reason: `Verified ${newReport.severity} vulnerability report (${newReport.title})`,
+      timestamp: nowIso,
+      txHash: txHashRep
+    };
+    setReputationEvents(prev => [newRepEvent, ...prev]);
+
+    const lastBlock = blockchainEvents[0]?.blockNumber || 18420101;
+    const blkEvent: BlockchainEvent = {
+      id: `blk-${Date.now()}`,
+      eventType: 'VerificationRecorded',
+      txHash: txHashVer,
+      blockNumber: lastBlock + 1,
+      timestamp: nowIso,
+      actor: newReport.researcherId,
+      status: 'confirmed',
+      details: `Technical verification completed for report ${reportId}`
+    };
+    setBlockchainEvents(prev => [blkEvent, ...prev]);
   };
 
   /**
@@ -248,13 +320,13 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const lastBlock = blockchainEvents[0]?.blockNumber || 18420101;
       const blkEvent: BlockchainEvent = {
         id: `blk-${Date.now()}`,
-        eventType: 'VerificationRecorded',
-        txHash: txHashVer,
+        eventType: 'ReputationUpdated',
+        txHash: txHashRep,
         blockNumber: lastBlock + 1,
         timestamp: nowIso,
         actor: report.researcherId,
         status: 'confirmed',
-        details: `Technical verification confirmed VALID for report ${reportId}`
+        details: `Reputation updated for researcher ${report.researcherId}`
       };
       setBlockchainEvents(prev => [blkEvent, ...prev]);
     }
@@ -291,7 +363,7 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       disputedBy: currentResearcher.handle,
       reason,
       evidence,
-      status: 'under_review',
+      status: 'open',
       createdAt: nowIso
     };
 
@@ -315,6 +387,72 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setBlockchainEvents(prev => [blkEvent, ...prev]);
   };
 
+  const openCreateBountyModal = () => {
+    setCreateBountyModalOpen(true);
+    // Reset form when opening
+    setCreateBountyForm({
+      title: '',
+      organizationId: '',
+      organizationName: '',
+      organizationTrustScore: 50,
+      severity: 'Low' as const,
+      rewardAmount: 0,
+      rewardCurrency: 'USD',
+      scope: [],
+      rules: [],
+      deadline: '',
+      verificationRequirements: [],
+      status: 'active' as const,
+      escrowId: '',
+      description: ''
+    });
+    setCreateBountyError(null);
+  };
+
+  const closeCreateBountyModal = () => {
+    setCreateBountyModalOpen(false);
+    // Reset form
+    setCreateBountyForm({
+      title: '',
+      organizationId: '',
+      organizationName: '',
+      organizationTrustScore: 50,
+      severity: 'Low' as const,
+      rewardAmount: 0,
+      rewardCurrency: 'USD',
+      scope: [],
+      rules: [],
+      deadline: '',
+      verificationRequirements: [],
+      status: 'active' as const,
+      escrowId: '',
+      description: ''
+    });
+    setCreateBountyError(null);
+  };
+
+  const handleCreateBounty = async (formData: Omit<Bounty, 'id'>) => {
+    setCreateBountyLoading(true);
+    setCreateBountyError(null);
+    try {
+      await createBounty(formData);
+      // Refetch bounties to get the newly created one
+      try {
+        const freshBounties = await getBounties();
+        setBounties(freshBounties);
+      } catch (fetchErr) {
+        // Error fetching bounties after creation, but we still created the bounty.
+        // We can log the error and keep the current bounties.
+        console.error('Failed to refetch bounties after creation:', fetchErr);
+      }
+      closeCreateBountyModal();
+    } catch (err) {
+      setCreateBountyError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCreateBountyLoading(false);
+    }
+  };
+
   return (
     <TrustContext.Provider
       value={{
@@ -331,7 +469,14 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         currentResearcher,
         submitVulnerability,
         verifySubmission,
-        raiseDispute
+        raiseDispute,
+        createBountyModalOpen,
+        createBountyForm,
+        createBountyLoading,
+        createBountyError,
+        openCreateBountyModal,
+        closeCreateBountyModal,
+        handleCreateBounty
       }}
     >
       {children}

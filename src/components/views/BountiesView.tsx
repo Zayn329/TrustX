@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Target, Search, RotateCcw, ArrowLeft, X, LayoutGrid, List } from 'lucide-react';
+import { Target, Search, RotateCcw, ArrowLeft, X, LayoutGrid, List, Plus } from 'lucide-react';
 import { useTrust } from '../../store/TrustContext';
 import { BountyCard } from '../bounties/BountyCard';
 import { BountyDetailModal } from '../bounties/BountyDetailModal';
+import { CreateBountyModal } from '../bounties/CreateBountyModal';
 import { Bounty } from '../../domain/types';
 
 export const BountiesView: React.FC = () => {
-  const { bounties } = useTrust();
+  const { bounties, createBountyModalOpen, openCreateBountyModal, closeCreateBountyModal } = useTrust();
   const [selectedBounty, setSelectedBounty] = useState<Bounty | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
@@ -119,6 +120,15 @@ export const BountiesView: React.FC = () => {
               <span className="hidden md:inline">Reset</span>
             </button>
           )}
+
+          {/* Add Bounty Button */}
+          <button
+            onClick={openCreateBountyModal}
+            className="ml-2 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-all shadow-lg shadow-indigo-600/20"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Add Bounty
+          </button>
         </div>
       </div>
 
@@ -215,6 +225,12 @@ export const BountiesView: React.FC = () => {
           onClose={() => setSelectedBounty(null)}
         />
       )}
+
+      {/* Create Bounty Modal */}
+      <CreateBountyModal
+        isOpen={createBountyModalOpen}
+        onClose={closeCreateBountyModal}
+      />
     </div>
   );
 };
