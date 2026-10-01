@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { WalletState, INITIAL_WALLET_STATE } from './wagmiConfig';
 import { Eip712ProofPayload, hashEip712ProofPayload, generateEcdsaSignature } from '../domain/cryptoUtils';
 import { isValidEthAddress, isConfiguredChain, blockchainConfig } from './config';
+import { walletClient, publicClient } from './viemClient';
+import { parseAbiItem, Address, encodeFunctionData, decodeEventLog } from 'viem';
 
 declare global {
   interface Window {
@@ -233,32 +235,138 @@ export function useEscrowContract() {
 
   const createEscrowOnChain = async (_bountyId: string, amountEth: number) => {
     setIsPending(true);
-    const contractAddress = blockchainConfig.trustBountyEscrowAddress;
+    const contractAddress = blockchainConfig.trustBountyEscrowAddress as Address;
 
     if (!isValidEthAddress(contractAddress)) {
       setIsPending(false);
       throw new Error('Invalid contract address');
     }
 
+    // Validate bounty ID
+    const bountyIdNum = Number(_bountyId);
+    if (isNaN(bountyIdNum) || bountyIdNum <= 0) {
+      setIsPending(false);
+      throw new Error('Invalid bounty ID');
+    }
+
+    // Validate amount
+    if (amountEth <= 0) {
+      setIsPending(false);
+      throw new Error('Amount must be greater than 0');
+    }
+
     if (typeof window !== 'undefined' && window.ethereum && wallet.isConnected && wallet.address) {
       try {
-        const hexAmount = `0x${(BigInt(Math.floor(amountEth * 1e18))).toString(16)}`;
-        const txHash = (await window.ethereum.request({
-          method: 'eth_sendTransaction',
-          params: [
-            {
-              from: wallet.address,
-              to: contractAddress,
-              value: hexAmount
+        // Convert ETH to wei
+        const value = BigInt(Math.floor(amountEth * 1e18));
+
+        // Encode the function call
+        const createEscrowAbiItem = parseAbiItem('function createEscrow(uint256 bountyId) external payable returns (uint256)');
+        const data = encodeFunctionData({
+          abi: [createEscrowAbiItem],
+          functionName: 'createEscrow',
+          args: [BigInt(bountyIdNum)]
+        });
+
+        // Get wallet client and send transaction
+        const client = walletClient();
+        if (!client) {
+          throw new Error('Unable to initialize wallet client');
+        }
+
+        const hash = await client.sendTransaction({
+          account: wallet.address as Address,
+          to: contractAddress,
+          value,
+          data
+        });
+
+        // Wait for transaction receipt
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+        // Check if transaction was successful
+        if (receipt.status !== 'success') {
+          throw new Error('Transaction failed');
+        }
+
+        // Parse EscrowFunded event from logs
+        let escrowId: string | null = null;
+        let bountyIdFromEvent: string | null = null;
+        let companyAddress: string | null = null;
+        let amount: string | null = null;
+
+        for (const log of receipt.logs) {
+          try {
+            // Try to decode as EscrowFunded event
+            const decoded = decodeEventLog({
+              abi: [
+                {
+                  "anonymous": false,
+                  "inputs": [
+                    {
+                      "indexed": true,
+                      "internalType": "uint256",
+                      "name": "escrowId",
+                      "type": "uint256"
+                    },
+                    {
+                      "indexed": true,
+                      "internalType": "uint256",
+                      "name": "bountyId",
+                      "type": "uint256"
+                    },
+                    {
+                      "indexed": false,
+                      "internalType": "address",
+                      "name": "company",
+                      "type": "address"
+                    },
+                    {
+                      "indexed": false,
+                      "internalType": "uint256",
+                      "name": "amount",
+                      "type": "uint256"
+                    }
+                  ],
+                  "name": "EscrowFunded",
+                  "type": "event"
+                }
+              ],
+              data: log.data,
+              topics: log.topics
+            });
+
+            if (decoded.eventName === 'EscrowFunded') {
+              escrowId = decoded.args.escrowId.toString();
+              bountyIdFromEvent = decoded.args.bountyId.toString();
+              companyAddress = decoded.args.company as Address;
+              amount = decoded.args.amount.toString();
+              break;
             }
-          ]
-        })) as string;
+          } catch (decodeError) {
+            // Not our event, continue
+            continue;
+          }
+        }
+
+        if (!escrowId) {
+          throw new Error('EscrowFunded event not found in transaction receipt');
+        }
 
         setIsPending(false);
-        return { success: true, txHash };
+        return {
+          success: true,
+          txHash: hash,
+          escrowId,
+          bountyId: bountyIdFromEvent ?? _bountyId,
+          companyAddress: companyAddress ?? wallet.address,
+          amount: amount ?? value.toString(),
+          blockNumber: receipt.blockNumber?.toString() ?? '0'
+        };
       } catch (err) {
         console.warn('On-chain escrow creation failed or rejected:', err);
         // Don't simulate - throw the error so UI can handle it properly
+        setIsPending(false);
         throw err;
       }
     }
