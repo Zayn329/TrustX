@@ -86,6 +86,7 @@ export const getBounties = async (): Promise<Bounty[]> => {
 
   const bountyCol = collection(db, BOUNTIES_COLLECTION);
   const bountySnapshot = await getDocs(bountyCol);
+  console.log('[getBounties] Fetched bounty docs:', bountySnapshot.docs.map(doc => doc.id));
   return bountySnapshot.docs.map(bountyFromDoc);
 };
 

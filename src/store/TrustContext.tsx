@@ -128,9 +128,11 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const loadBounties = async () => {
       try {
         const fetchedBounties = await getBounties();
+        console.log('[TrustContext] Loaded bounties from Firestore:', fetchedBounties.length);
+        console.log('[TrustContext] Loaded bounty IDs:', fetchedBounties.map(b => b.id));
         setBounties(fetchedBounties);
       } catch (err) {
-        // Error is already handled by the error boundary or logging, we can ignore for now
+        console.error('[TrustContext] Failed to load bounties from Firestore, falling back to mock data:', err);
         // Fallback to mock data
         setBounties(INITIAL_BOUNTIES);
       }
@@ -481,12 +483,16 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setFundEscrowLoading(true);
     setFundEscrowError(null);
 
+    let result: { txHash: string; escrowId: string } | null = null;
     try {
       // Get the bounty to validate
       const bounty = bounties.find(b => b.id === bountyId);
       if (!bounty) {
         throw new Error('Bounty not found');
       }
+
+      // Debug logging for document ID verification
+      console.log('[fundEscrow] Attempting to fund bounty with ID:', bounty.id);
 
       // Check if escrow already funded
       if (bounty.escrowId && bounty.escrowId.trim() !== '') {
@@ -529,32 +535,44 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const onChainBountyId = generateOnChainIdFromFirestoreId(bounty.id);
 
       // Call the escrow contract
-      const result = await createEscrowOnChain(onChainBountyId, ethAmount);
+      result = await createEscrowOnChain(onChainBountyId, ethAmount);
 
       // Update the bounty in Firestore with escrow information
-      await updateBounty(bounty.id, {
-        escrowId: result.escrowId,
-        escrowStatus: 'funded',
-        fundingTxHash: result.txHash,
+      const updatePayload = {
+        escrowId: result!.escrowId,
+        escrowStatus: 'funded' as const,
+        fundingTxHash: result!.txHash,
         escrowAmountEth: parseFloat(usdcToEth(bounty.rewardAmount)), // Store as ETH amount
         escrowDemoRate: getDemoUsdcPerEth() // Store the demo rate used
-      });
+      };
 
-      // Update local state optimistically
+      console.log('[fundEscrow] Attempting Firestore update for bounty:', bounty.id, 'with payload:', updatePayload);
+      await updateBounty(bounty.id, updatePayload);
+      console.log('[fundEscrow] Firestore update completed for bounty:', bounty.id);
+
+      // Update local state optimistically with all persisted values
       setBounties(prev =>
         prev.map(b =>
           b.id === bounty.id
             ? {
                 ...b,
-                escrowId: result.escrowId,
-                escrowStatus: 'funded'
+                escrowId: result!.escrowId,
+                escrowStatus: 'funded',
+                fundingTxHash: result!.txHash,
+                escrowAmountEth: parseFloat(usdcToEth(bounty.rewardAmount)),
+                escrowDemoRate: getDemoUsdcPerEth()
               }
             : b
         )
       );
 
     } catch (err) {
-      setFundEscrowError(err instanceof Error ? err.message : String(err));
+      let errorMessage = err instanceof Error ? err.message : String(err);
+      if (result && result.txHash) {
+        errorMessage += ` (Transaction hash: ${result.txHash})`;
+      }
+      console.error('[fundEscrow] Error updating bounty:', err);
+      setFundEscrowError(errorMessage);
     } finally {
       setFundEscrowLoading(false);
     }

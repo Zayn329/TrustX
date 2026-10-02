@@ -3,7 +3,8 @@ import { WalletState, INITIAL_WALLET_STATE } from './wagmiConfig';
 import { Eip712ProofPayload, hashEip712ProofPayload, generateEcdsaSignature } from '../domain/cryptoUtils';
 import { isValidEthAddress, isConfiguredChain, blockchainConfig } from './config';
 import { walletClient, publicClient } from './viemClient';
-import { parseAbiItem, Address, encodeFunctionData, decodeEventLog } from 'viem';
+import { parseAbiItem, Address, encodeFunctionData, decodeEventLog, createPublicClient, custom } from 'viem';
+import { sepolia } from 'viem/chains';
 
 declare global {
   interface Window {
@@ -281,8 +282,17 @@ export function useEscrowContract() {
           data
         });
 
-        // Wait for transaction receipt
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        // Wait for transaction receipt using wallet provider if available (to avoid CORS issues with public RPC)
+        let receipt;
+        if (typeof window !== 'undefined' && window.ethereum && wallet.isConnected) {
+          const walletPublicClient = createPublicClient({
+            chain: sepolia,
+            transport: custom(window.ethereum),
+          });
+          receipt = await walletPublicClient.waitForTransactionReceipt({ hash });
+        } else {
+          receipt = await publicClient.waitForTransactionReceipt({ hash });
+        }
 
         // Check if transaction was successful
         if (receipt.status !== 'success') {
