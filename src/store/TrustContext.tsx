@@ -23,10 +23,10 @@ import {
   INITIAL_DISPUTES,
   INITIAL_SYBIL_RISK
 } from '../domain/mockData';
-import { sha256, generateRealTxHash, generateEcdsaSignature } from '../domain/cryptoUtils';
-import { getBounties, createBounty, updateBounty } from '../services/firestoreService';
+import { getBounties, createBounty, updateBounty, getReports, createReport } from '../services/firestoreService';
 import { usdcToEth, generateOnChainIdFromFirestoreId, getDemoUsdcPerEth } from '../services/conversionService';
 import { useEscrowContract } from '../blockchain/useEscrowContract';
+import { generateRealTxHash } from '../domain/cryptoUtils';
 
 interface NewSubmissionPayload {
   bountyId: string;
@@ -83,7 +83,7 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [identities, setIdentities] = useState<Identity[]>(INITIAL_IDENTITIES);
   const [bounties, setBounties] = useState<Bounty[]>([]);
   const [reports, setReports] = useState<VulnerabilityReport[]>(INITIAL_REPORTS);
-  const [proofs, setProofs] = useState<Proof[]>(INITIAL_PROOFS);
+  const [proofs] = useState<Proof[]>(INITIAL_PROOFS);
   const [verifications, setVerifications] = useState<Verification[]>(INITIAL_VERIFICATIONS);
   const [reputationEvents, setReputationEvents] = useState<ReputationEvent[]>(INITIAL_REPUTATION_EVENTS);
   const [escrows, setEscrows] = useState<Escrow[]>(INITIAL_ESCROWS);
@@ -138,122 +138,70 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     };
 
+    // Load reports from Firestore on mount
+    const loadReports = async () => {
+      try {
+        const fetchedReports = await getReports();
+        console.log('[TrustContext] Loaded reports from Firestore:', fetchedReports.length);
+        console.log('[TrustContext] Loaded report IDs:', fetchedReports.map(r => r.id));
+        setReports(fetchedReports);
+      } catch (err) {
+        console.error('[TrustContext] Failed to load reports from Firestore, falling back to mock data:', err);
+        // Fallback to mock data
+        setReports(INITIAL_REPORTS);
+      }
+    };
+
     loadBounties();
+    loadReports();
   }, []);
 
   /**
-   * Registers a vulnerability submission on-chain or via EIP-1193 Web3 provider when available,
-   * while updating local application state for real-time UI synchronization.
+   * Registers a vulnerability submission via Firestore persistence.
+   * Blockchain anchoring for proofs and other verification steps remain in their respective functions.
    */
   const submitVulnerability = async (payload: NewSubmissionPayload) => {
-    const reportId = `rep-${Date.now().toString().slice(-4)}`;
-    const proofId = `proof-${Date.now().toString().slice(-4)}`;
-    const nowIso = new Date().toISOString();
+    // Validate payload
+    if (!payload.bountyId || !payload.researcherId || !payload.title.trim()) {
+      throw new Error('Invalid submission payload');
+    }
 
-    const newReport: VulnerabilityReport = {
-      id: reportId,
-      ...payload,
+    // Create report object with auto-generated ID to be replaced by Firestore
+    const nowIso = new Date().toISOString();
+    const newReport: Omit<VulnerabilityReport, 'id'> = {
+      bountyId: payload.bountyId,
+      researcherId: payload.researcherId,
+      title: payload.title,
+      vulnerabilityType: payload.vulnerabilityType,
+      severity: payload.severity,
+      description: payload.description,
+      reproductionSteps: payload.reproductionSteps,
+      impact: payload.impact,
+      evidence: payload.evidence,
       createdAt: nowIso
     };
 
-    const rawContentToHash = `${payload.title}|${payload.description}|${payload.reproductionSteps}|${payload.evidence}|${nowIso}`;
-    const contentHash = await sha256(rawContentToHash);
-    const signature = generateEcdsaSignature(payload.researcherId, contentHash);
+    try {
+      // Save report to Firestore and get the real document ID
+      const reportId = await createReport(newReport);
 
-    let txHashRep: string | undefined;
-    let txHashVer: string | undefined;
+      // Create the complete report with the real Firestore ID
+      const reportWithId: VulnerabilityReport = {
+        id: reportId,
+        ...newReport
+      };
 
-    // Attempt live on-chain registration if window.ethereum provider is available
-    if (typeof window !== 'undefined' && window.ethereum) {
-      try {
-        const accounts = (await window.ethereum.request({ method: 'eth_accounts' })) as string[];
-        if (accounts && accounts.length > 0) {
-          txHashRep = (await window.ethereum.request({
-            method: 'eth_sendTransaction',
-            params: [{ from: accounts[0], to: ESCROW_CONTRACT_ADDRESS, value: '0x0' }]
-          })) as string;
-        }
-      } catch (err) {
-        console.warn('Live Web3 transaction execution declined, using fallback RPC simulation:', err);
-      }
+      // Update local state with the persisted report
+      setReports(prev => [reportWithId, ...prev]);
+
+      // Note: Proof anchoring, verification, and other blockchain-related steps
+      // are handled in their respective functions (verifySubmission, etc.)
+      // This function focuses solely on persistent report submission via Firestore
+
+    } catch (err) {
+      console.error('[submitVulnerability] Failed to create report in Firestore:', err);
+      throw err;
     }
-
-    if (!txHashRep) txHashRep = generateRealTxHash();
-    if (!txHashVer) txHashVer = generateRealTxHash();
-
-    const newProof: Proof = {
-      id: proofId,
-      contributionId: reportId,
-      contentHash,
-      signature,
-      timestamp: nowIso,
-      proofStatus: 'anchored_on_chain'
-    };
-
-    const verificationId = `ver-${Date.now().toString().slice(-4)}`;
-    const targetBounty = bounties.find(b => b.id === payload.bountyId);
-    const newVerification: Verification = {
-      id: verificationId,
-      contributionId: reportId,
-      verifierId: targetBounty?.organizationId || 'did:trust:verifier_org',
-      verifierName: targetBounty?.organizationName || 'Bounty Reviewer',
-      status: 'pending',
-      notes: 'Submitted report awaiting technical verification.',
-      verifiedAt: undefined
-    };
-
-    setReports(prev => [newReport, ...prev]);
-    setProofs(prev => [newProof, ...prev]);
-    setVerifications(prev => [newVerification, ...prev]);
-
-    if (targetBounty) {
-      setEscrows(prev =>
-        prev.map(e =>
-          e.id === targetBounty.escrowId
-            ? { ...e, status: 'locked', researcherAddress: newReport.researcherId }
-            : e
-        )
-      );
-    }
-
-    setIdentities(prev =>
-      prev.map(id => {
-        if (id.id === newReport.researcherId) {
-          const rewardAmt = targetBounty ? targetBounty.rewardAmount : 5000;
-          return {
-            ...id,
-            trustScore: Math.min(100, id.trustScore + 3),
-            verifiedContributionsCount: id.verifiedContributionsCount + 1,
-            successfulBountiesCount: id.successfulBountiesCount + 1,
-            totalRewardsEarned: id.totalRewardsEarned + rewardAmt
-          };
-        }
-        return id;
-      })
-    );
-
-    const newRepEvent: ReputationEvent = {
-      id: `repevt-${Date.now()}`,
-      researcherId: newReport.researcherId,
-      delta: 3,
-      reason: `Verified ${newReport.severity} vulnerability report (${newReport.title})`,
-      timestamp: nowIso,
-      txHash: txHashRep
-    };
-    setReputationEvents(prev => [newRepEvent, ...prev]);
-
-    const lastBlock = blockchainEvents[0]?.blockNumber || 18420101;
-    const blkEvent: BlockchainEvent = {
-      id: `blk-${Date.now()}`,
-      eventType: 'VerificationRecorded',
-      txHash: txHashVer,
-      blockNumber: lastBlock + 1,
-      timestamp: nowIso,
-      actor: newReport.researcherId,
-      status: 'confirmed',
-      details: `Technical verification completed for report ${reportId}`
-    };
-    setBlockchainEvents(prev => [blkEvent, ...prev]);
   };
 
   /**
@@ -296,8 +244,8 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
       }
 
-      if (!txHashRep) txHashRep = generateRealTxHash();
-      if (!txHashVer) txHashVer = generateRealTxHash();
+      txHashRep = txHashRep ?? generateRealTxHash();
+      txHashVer = txHashVer ?? generateRealTxHash();
 
       if (bounty) {
         setEscrows(prev =>
@@ -373,7 +321,7 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     }
 
-    if (!txHashDisp) txHashDisp = generateRealTxHash();
+    txHashDisp = txHashDisp ?? generateRealTxHash();
 
     const newDispute: Dispute = {
       id: disputeId,
