@@ -10,6 +10,7 @@ export const BountiesView: React.FC = () => {
   const { bounties, createBountyModalOpen, openCreateBountyModal, closeCreateBountyModal } = useTrust();
   const [selectedBounty, setSelectedBounty] = useState<Bounty | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [perspective, setPerspective] = useState<'researcher' | 'company'>('researcher');
 
   // Category A Item 7: Filter State Memory with sessionStorage
   const [searchTerm, setSearchTerm] = useState(() => sessionStorage.getItem('bounty_search') || '');
@@ -132,6 +133,31 @@ export const BountiesView: React.FC = () => {
         </div>
       </div>
 
+      {/* Perspective Selector */}
+      <div className="flex items-center gap-4 pt-2">
+        <span className="text-xs text-slate-500">Perspective:</span>
+        <button
+          onClick={() => setPerspective('researcher')}
+          className={`px-3 py-1 rounded transition-all ${
+            perspective === 'researcher'
+              ? 'bg-blue-400 text-slate-950'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          Researcher View
+        </button>
+        <button
+          onClick={() => setPerspective('company')}
+          className={`px-3 py-1 rounded transition-all ${
+            perspective === 'company'
+              ? 'bg-blue-400 text-slate-950'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          Company View
+        </button>
+      </div>
+
       {/* Count Summary & Filter Pills */}
       <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 border-y border-slate-800/60 py-4 gap-2">
         <div className="font-semibold text-slate-300">
@@ -165,6 +191,7 @@ export const BountiesView: React.FC = () => {
               key={bounty.id}
               bounty={bounty}
               onSelect={b => setSelectedBounty(b)}
+              perspective={perspective}
             />
           ))}
         </div>

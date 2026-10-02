@@ -7,9 +7,10 @@ import { useTrust } from '../../store/TrustContext';
 interface BountyCardProps {
   bounty: Bounty;
   onSelect: (bounty: Bounty) => void;
+  perspective?: 'researcher' | 'company';
 }
 
-export const BountyCard: React.FC<BountyCardProps> = ({ bounty, onSelect }) => {
+export const BountyCard: React.FC<BountyCardProps> = ({ bounty, onSelect, perspective }) => {
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [copiedScope, setCopiedScope] = useState<string | null>(null);
 
@@ -103,33 +104,49 @@ export const BountyCard: React.FC<BountyCardProps> = ({ bounty, onSelect }) => {
             >
               Details
             </button>
-            <button
-              onClick={() => setShowSubmitModal(true)}
-              className="inline-flex items-center gap-1.5 bg-blue-400 hover:bg-blue-300 text-slate-950 text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-blue-500/15"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>Submit Report</span>
-            </button>
-            {/* Fund Escrow button - only shown for eligible bounties */}
-            {bounty.escrowStatus === '' &&
-             bounty.status === 'active' &&
-             bounty.rewardCurrency === 'USDC' &&
-             bounty.rewardAmount > 0 && (
-              <button
-                onClick={async () => {
-                  try {
-                    await fundEscrow(bounty.id);
-                  } catch (err) {
-                    // Error will be handled by fundEscrowError from useTrust
-                    console.error('Fund escrow failed:', err);
-                  }
-                }}
-                className="inline-flex items-center gap-1.5 bg-green-400 hover:bg-green-300 text-slate-950 text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-green-500/15"
-                disabled={fundEscrowLoading}
-              >
-                <DollarSign className="w-3.5 h-3.5" />
-                <span>{fundEscrowLoading ? 'Funding...' : 'Fund Escrow'}</span>
-              </button>
+            {perspective === 'researcher' && (
+              <>
+                <button
+                  onClick={() => setShowSubmitModal(true)}
+                  className="inline-flex items-center gap-1.5 bg-blue-400 hover:bg-blue-300 text-slate-950 text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-blue-500/15"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Submit Report</span>
+                </button>
+              </>
+            )}
+            {perspective === 'company' && (
+              <>
+                {bounty.escrowStatus === '' && bounty.status === 'active' && bounty.rewardCurrency === 'USDC' && bounty.rewardAmount > 0 && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await fundEscrow(bounty.id);
+                      } catch (err) {
+                        // Error will be handled by fundEscrowError from useTrust
+                        console.error('Fund escrow failed:', err);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 bg-green-400 hover:bg-green-300 text-slate-950 text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-green-500/15"
+                    disabled={fundEscrowLoading}
+                  >
+                    <DollarSign className="w-3.5 h-3.5" />
+                    <span>{fundEscrowLoading ? 'Funding...' : 'Fund Escrow'}</span>
+                  </button>
+                )}
+                {bounty.escrowStatus === 'funded' && (
+                  <div className="text-xs text-green-500">
+                    <div>Escrow Funded</div>
+                    <div className="text-[10px]">Escrow ID: {bounty.escrowId}</div>
+                    <div className="text-[10px]">TX: {bounty.fundingTxHash.slice(0, 10)}...</div>
+                  </div>
+                )}
+                {bounty.escrowStatus === '' && (
+                  <div className="text-xs text-red-500">
+                    Escrow not funded — fund the bounty before researchers can proceed.
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
