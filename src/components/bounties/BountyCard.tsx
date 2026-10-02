@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ShieldCheck, DollarSign, Send, Copy, Check } from 'lucide-react';
 import { Bounty } from '../../domain/types';
 import { SubmitVulnerabilityModal } from './SubmitVulnerabilityModal';
+import { useTrust } from '../../store/TrustContext';
 
 interface BountyCardProps {
   bounty: Bounty;
@@ -11,6 +12,13 @@ interface BountyCardProps {
 export const BountyCard: React.FC<BountyCardProps> = ({ bounty, onSelect }) => {
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [copiedScope, setCopiedScope] = useState<string | null>(null);
+
+  // FIXED: useTrust() called at component level, not inside event handler
+  const {
+    fundEscrow,
+    fundEscrowLoading,
+    fundEscrowError
+  } = useTrust();
 
   const handleCopyScope = (scopeItem: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -102,9 +110,37 @@ export const BountyCard: React.FC<BountyCardProps> = ({ bounty, onSelect }) => {
               <Send className="w-3.5 h-3.5" />
               <span>Submit Report</span>
             </button>
+            {/* Fund Escrow button - only shown for eligible bounties */}
+            {bounty.escrowStatus === '' &&
+             bounty.status === 'active' &&
+             bounty.rewardCurrency === 'USDC' &&
+             bounty.rewardAmount > 0 && (
+              <button
+                onClick={async () => {
+                  try {
+                    await fundEscrow(bounty.id);
+                  } catch (err) {
+                    // Error will be handled by fundEscrowError from useTrust
+                    console.error('Fund escrow failed:', err);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 bg-green-400 hover:bg-green-300 text-slate-950 text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-green-500/15"
+                disabled={fundEscrowLoading}
+              >
+                <DollarSign className="w-3.5 h-3.5" />
+                <span>{fundEscrowLoading ? 'Funding...' : 'Fund Escrow'}</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Display error if exists */}
+      {fundEscrowError && (
+        <div className="mt-2 p-3 bg-red-900/50 border border-red-500/50 rounded-lg text-sm text-red-300">
+          {fundEscrowError}
+        </div>
+      )}
 
       {showSubmitModal && (
         <SubmitVulnerabilityModal

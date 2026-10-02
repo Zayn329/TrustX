@@ -36,6 +36,10 @@ const bountyFromDoc = (docRef: QueryDocumentSnapshot): Bounty => {
     verificationRequirements: data.verificationRequirements,
     status: data.status,
     escrowId: data.escrowId,
+    escrowStatus: data.escrowStatus ?? '',
+    fundingTxHash: data.fundingTxHash ?? '',
+    escrowAmountEth: data.escrowAmountEth ?? 0,
+    escrowDemoRate: data.escrowDemoRate ?? 0,
     description: data.description,
   };
 };
@@ -63,6 +67,10 @@ const bountyToFirestore = (bounty: Omit<Bounty, 'id'>) => {
     verificationRequirements: bounty.verificationRequirements,
     status: bounty.status,
     escrowId: bounty.escrowId,
+    escrowStatus: bounty.escrowStatus,
+    fundingTxHash: bounty.fundingTxHash,
+    escrowAmountEth: bounty.escrowAmountEth,
+    escrowDemoRate: bounty.escrowDemoRate,
     description: bounty.description,
   };
 };

@@ -114,6 +114,10 @@ export const INITIAL_BOUNTIES: Bounty[] = [
     ],
     status: 'active',
     escrowId: 'escrow-101',
+    escrowStatus: '',
+    fundingTxHash: '',
+    escrowAmountEth: 0,
+    escrowDemoRate: 0,
     description: 'Nexus Financial is seeking security disclosures regarding potential reentrancy, oracle manipulation, or state desynchronization within our core settlement bridge contracts.'
   },
   {
@@ -137,6 +141,10 @@ export const INITIAL_BOUNTIES: Bounty[] = [
     ],
     status: 'active',
     escrowId: 'escrow-102',
+    escrowStatus: '',
+    fundingTxHash: '',
+    escrowAmountEth: 0,
+    escrowDemoRate: 0,
     description: 'Identify flaws in OAuth2 implementation, JWT signature validation, or session management allowing unauthorized administrative access.'
   }
 ];

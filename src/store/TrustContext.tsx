@@ -24,7 +24,9 @@ import {
   INITIAL_SYBIL_RISK
 } from '../domain/mockData';
 import { sha256, generateRealTxHash, generateEcdsaSignature } from '../domain/cryptoUtils';
-import { getBounties, createBounty } from '../services/firestoreService';
+import { getBounties, createBounty, updateBounty } from '../services/firestoreService';
+import { usdcToEth, generateOnChainIdFromFirestoreId, getDemoUsdcPerEth } from '../services/conversionService';
+import { useEscrowContract } from '../blockchain/useEscrowContract';
 
 interface NewSubmissionPayload {
   bountyId: string;
@@ -56,6 +58,9 @@ interface TrustContextType {
   createBountyForm: Omit<Bounty, 'id'>;
   createBountyLoading: boolean;
   createBountyError: string | null;
+  // Escrow funding state
+  fundEscrowLoading: boolean;
+  fundEscrowError: string | null;
   // Functions
   submitVulnerability: (payload: NewSubmissionPayload) => Promise<void>;
   verifySubmission: (reportId: string, isApproved: boolean, notes: string) => Promise<void>;
@@ -63,6 +68,7 @@ interface TrustContextType {
   openCreateBountyModal: () => void;
   closeCreateBountyModal: () => void;
   handleCreateBounty: (formData: Omit<Bounty, 'id'>) => Promise<void>;
+  fundEscrow: (bountyId: string) => Promise<void>;
 }
 
 const TrustContext = createContext<TrustContextType | undefined>(undefined);
@@ -93,17 +99,27 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     organizationTrustScore: 50,
     severity: 'Low' as const,
     rewardAmount: 0,
-    rewardCurrency: 'USD',
+    rewardCurrency: 'USDC',
     scope: [],
     rules: [],
     deadline: '',
     verificationRequirements: [],
     status: 'active' as const,
     escrowId: '',
+    escrowStatus: '',
+    fundingTxHash: '',
+    escrowAmountEth: 0,
+    escrowDemoRate: 0,
     description: ''
   });
   const [createBountyLoading, setCreateBountyLoading] = useState(false);
   const [createBountyError, setCreateBountyError] = useState<string | null>(null);
+  // Escrow funding state
+  const [fundEscrowLoading, setFundEscrowLoading] = useState(false);
+  const [fundEscrowError, setFundEscrowError] = useState<string | null>(null);
+
+  // Wallet and blockchain functions - moved to component level to avoid Hook violations
+  const { wallet, isWalletOnConfiguredChain, getWalletAddress, createEscrowOnChain } = useEscrowContract();
 
   const currentResearcher = identities[0];
 
@@ -404,6 +420,10 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       verificationRequirements: [],
       status: 'active' as const,
       escrowId: '',
+      escrowStatus: '',
+      fundingTxHash: '',
+      escrowAmountEth: 0,
+      escrowDemoRate: 0,
       description: ''
     });
     setCreateBountyError(null);
@@ -426,6 +446,10 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       verificationRequirements: [],
       status: 'active' as const,
       escrowId: '',
+      escrowStatus: '',
+      fundingTxHash: '',
+      escrowAmountEth: 0,
+      escrowDemoRate: 0,
       description: ''
     });
     setCreateBountyError(null);
@@ -453,6 +477,89 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
+  const fundEscrow = async (bountyId: string) => {
+    setFundEscrowLoading(true);
+    setFundEscrowError(null);
+
+    try {
+      // Get the bounty to validate
+      const bounty = bounties.find(b => b.id === bountyId);
+      if (!bounty) {
+        throw new Error('Bounty not found');
+      }
+
+      // Check if escrow already funded
+      if (bounty.escrowId && bounty.escrowId.trim() !== '') {
+        throw new Error('Escrow already funded for this bounty');
+      }
+
+      // Validate currency - only support USDC for demo conversion
+      if (bounty.rewardCurrency !== 'USDC') {
+        throw new Error('Only USDC rewards are supported for escrow funding in this demo');
+      }
+
+      // Validate reward amount
+      if (bounty.rewardAmount <= 0) {
+        throw new Error('Invalid reward amount');
+      }
+
+      // Validate wallet connection
+      if (!wallet.isConnected) {
+        throw new Error('Wallet not connected');
+      }
+
+      // Validate network
+      if (!isWalletOnConfiguredChain()) {
+        throw new Error(`Wallet is not on the configured Sepolia network. Please switch to Sepolia.`);
+      }
+
+      // Get wallet address
+      const walletAddress = getWalletAddress();
+      if (!walletAddress) {
+        throw new Error('Invalid wallet address');
+      }
+
+      // Convert USDC to ETH using demo rate
+      const ethAmount = parseFloat(usdcToEth(bounty.rewardAmount));
+      if (ethAmount <= 0) {
+        throw new Error('Invalid ETH amount after conversion');
+      }
+
+      // Generate deterministic on-chain ID from Firestore ID
+      const onChainBountyId = generateOnChainIdFromFirestoreId(bounty.id);
+
+      // Call the escrow contract
+      const result = await createEscrowOnChain(onChainBountyId, ethAmount);
+
+      // Update the bounty in Firestore with escrow information
+      await updateBounty(bounty.id, {
+        escrowId: result.escrowId,
+        escrowStatus: 'funded',
+        fundingTxHash: result.txHash,
+        escrowAmountEth: parseFloat(usdcToEth(bounty.rewardAmount)), // Store as ETH amount
+        escrowDemoRate: getDemoUsdcPerEth() // Store the demo rate used
+      });
+
+      // Update local state optimistically
+      setBounties(prev =>
+        prev.map(b =>
+          b.id === bounty.id
+            ? {
+                ...b,
+                escrowId: result.escrowId,
+                escrowStatus: 'funded'
+              }
+            : b
+        )
+      );
+
+    } catch (err) {
+      setFundEscrowError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setFundEscrowLoading(false);
+    }
+  };
+
   return (
     <TrustContext.Provider
       value={{
@@ -476,7 +583,10 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         createBountyError,
         openCreateBountyModal,
         closeCreateBountyModal,
-        handleCreateBounty
+        handleCreateBounty,
+        fundEscrowLoading,
+        fundEscrowError,
+        fundEscrow
       }}
     >
       {children}

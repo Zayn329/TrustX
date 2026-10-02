@@ -16,13 +16,17 @@ export const CreateBountyModal: React.FC<CreateBountyModalProps> = ({ isOpen, on
     organizationTrustScore: 50,
     severity: 'Low' as SeverityLevel,
     rewardAmount: 0,
-    rewardCurrency: 'USD',
+    rewardCurrency: 'USDC',
     scope: [],
     rules: [],
     deadline: '',
     verificationRequirements: [],
     status: 'active' as const,
     escrowId: '',
+    escrowStatus: '',
+    fundingTxHash: '',
+    escrowAmountEth: 0,
+    escrowDemoRate: 0,
     description: ''
   });
 
@@ -97,13 +101,17 @@ export const CreateBountyModal: React.FC<CreateBountyModalProps> = ({ isOpen, on
         organizationTrustScore: 50,
         severity: 'Low' as SeverityLevel,
         rewardAmount: 0,
-        rewardCurrency: 'USD',
+        rewardCurrency: 'USDC',
         scope: [],
         rules: [],
         deadline: '',
         verificationRequirements: [],
         status: 'active' as const,
         escrowId: '',
+        escrowStatus: '',
+        fundingTxHash: '',
+        escrowAmountEth: 0,
+        escrowDemoRate: 0,
         description: ''
       });
     } catch (err) {
