@@ -24,7 +24,7 @@ export const ExplorerView: React.FC = () => {
   useEffect(() => {
     if (!activeReport) return;
     const activeProofHash = proofs.find((proof) => proof.contributionId === activeReport.id)?.contentHash;
-    runSandboxEvaluation({ reportId: activeReport.id, reproductionSteps: activeReport.reproductionSteps, evidenceHash: activeProofHash })
+    runSandboxEvaluation({ reportId: activeReport.id, bountyId: activeReport.bountyId, scope: activeBounty?.scope, reproductionSteps: activeReport.reproductionSteps, evidenceHash: activeProofHash })
       .then(res => setOracleResult(res))
       .catch(() => setOracleResult(null));
   }, [activeReport, proofs]);

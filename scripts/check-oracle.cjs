@@ -32,6 +32,8 @@ async function main() {
   if (!session.requestToken) throw new Error('Oracle session token was not issued');
   const request = {
     reportId: 'rep-check',
+  bountyId: 'bounty-check',
+  scope: ['fixture://trustx-settlement-v1'],
     reproductionSteps: 'CALL deposit(1000)\nCALL flashLoan(1e18)\nCALL settlement(before_state_update)',
     evidenceHash: `0x${'b'.repeat(64)}`,
     idempotencyKey: sha256('rep-check:oracle-check')

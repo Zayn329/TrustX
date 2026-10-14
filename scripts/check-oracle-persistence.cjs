@@ -6,6 +6,8 @@ const { spawn } = require('node:child_process');
 const storePath = path.join(os.tmpdir(), `trustx-oracle-persistence-${process.pid}.json`);
 const request = {
   reportId: 'rep-persistence-check',
+  bountyId: 'bounty-persistence-check',
+  scope: ['fixture://trustx-settlement-v1'],
   reproductionSteps: 'CALL deposit(1000)\nCALL flashLoan(1e18)\nCALL settlement(before_state_update)',
   evidenceHash: `0x${'c'.repeat(64)}`,
   idempotencyKey: 'persistence-check-key'

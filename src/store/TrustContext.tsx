@@ -252,8 +252,11 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (!report) return;
 
     const reportProof = proofs.find((proof) => proof.contributionId === report.id);
+    const reportBounty = bounties.find((bounty) => bounty.id === report.bountyId);
     const technicalResult = await runSandboxEvaluation({
       reportId: report.id,
+      bountyId: report.bountyId,
+      scope: reportBounty?.scope,
       reproductionSteps: report.reproductionSteps,
       evidenceHash: reportProof?.contentHash
     });

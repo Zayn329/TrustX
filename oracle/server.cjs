@@ -124,6 +124,8 @@ function runWorker(payload) {
 
 async function evaluate(body) {
   if (typeof body.reportId !== 'string' || body.reportId.length > 128) throw new Error('Invalid reportId');
+  if (typeof body.bountyId !== 'string' || body.bountyId.length > 128) throw new Error('Invalid bountyId');
+  if (!Array.isArray(body.scope) || body.scope.some((item) => typeof item !== 'string' || item.length > 256)) throw new Error('Invalid scope');
   if (typeof body.reproductionSteps !== 'string' || body.reproductionSteps.length === 0 || body.reproductionSteps.length > 16000) throw new Error('Invalid reproductionSteps');
   if (typeof body.evidenceHash !== 'string' || !/^0x[0-9a-f]{64}$/i.test(body.evidenceHash)) throw new Error('Invalid evidenceHash');
   if (typeof body.idempotencyKey !== 'string' || body.idempotencyKey.length < 8 || body.idempotencyKey.length > 128) throw new Error('Invalid idempotencyKey');
@@ -132,6 +134,8 @@ async function evaluate(body) {
     reportId: body.reportId,
     reproductionSteps: body.reproductionSteps,
     evidenceHash: body.evidenceHash,
+    bountyId: body.bountyId,
+    scope: body.scope,
     targetVersion: 'trustx-settlement-v1',
     idempotencyKey: body.idempotencyKey
   };
@@ -144,6 +148,8 @@ async function evaluate(body) {
   const unsigned = {
     executionId,
     reportId: request.reportId,
+    bountyId: request.bountyId,
+    scope: request.scope,
     requestHash,
     evidenceHash: request.evidenceHash,
     status: workerResult.status,

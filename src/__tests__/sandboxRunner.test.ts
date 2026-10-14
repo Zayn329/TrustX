@@ -15,12 +15,16 @@ describe('sandboxRunner (remote technical verifier)', () => {
   it('accepts only a structured remote verifier result', async () => {
     const evidenceHash = `0x${'a'.repeat(64)}`;
     const reportId = 'rep-test';
+    const bountyId = 'bounty-test';
+    const scope = ['fixture://trustx-settlement-v1'];
     const reproductionSteps = 'CALL deposit(1000)';
     const idempotencyKey = 'idempotency-test';
     const requestHash = await sha256(JSON.stringify({
       reportId,
       reproductionSteps,
       evidenceHash,
+      bountyId,
+      scope,
       targetVersion: 'trustx-settlement-v1',
       idempotencyKey
     }));
@@ -31,6 +35,8 @@ describe('sandboxRunner (remote technical verifier)', () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({
       executionId: 'exec-123',
       reportId,
+      bountyId,
+      scope,
       requestHash,
       evidenceHash,
       status: 'passed',
@@ -46,7 +52,7 @@ describe('sandboxRunner (remote technical verifier)', () => {
       publicKeySpkiBase64: 'AA=='
       }), { status: 200, headers: { 'Content-Type': 'application/json' } })));
 
-    const result = await runSandboxEvaluation({ reportId, reproductionSteps, evidenceHash, idempotencyKey });
+    const result = await runSandboxEvaluation({ reportId, bountyId, scope, reproductionSteps, evidenceHash, idempotencyKey });
     expect(result.executionMode).toBe('isolated_remote_oracle');
     expect(result.executionId).toBe('exec-123');
     expect(result.status).toBe('passed');
@@ -62,7 +68,7 @@ describe('sandboxRunner (remote technical verifier)', () => {
     vi.stubGlobal('fetch', vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ requestToken: 'request-token-123456789' }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
-      executionId: 'exec-tampered', reportId: 'rep-other', requestHash: '0xwrong', evidenceHash,
+      executionId: 'exec-tampered', reportId: 'rep-other', bountyId: 'bounty-test', scope: [], requestHash: '0xwrong', evidenceHash,
       status: 'passed', coveragePercentage: 100, logs: [], vulnerabilityCategory: 'Tampered',
       executedAt: '2026-10-14T00:00:00.000Z', verifierVersion: 'trustx-verifier-1',
       targetVersion: 'trustx-settlement-v1', executionMode: 'isolated_remote_oracle',
