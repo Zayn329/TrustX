@@ -4,6 +4,8 @@ import { TRUST_BOUNTY_ESCROW_ABI } from './escrowAbi';
 export const CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID);
 export const RPC_URL = import.meta.env.VITE_RPC_URL;
 export const TRUST_BOUNTY_ESCROW_ADDRESS = import.meta.env.VITE_TRUST_BOUNTY_ESCROW_ADDRESS;
+export const REPUTATION_REGISTRY_ADDRESS = import.meta.env.VITE_REPUTATION_REGISTRY_ADDRESS;
+export const PROOF_REGISTRY_ADDRESS = import.meta.env.VITE_PROOF_REGISTRY_ADDRESS;
 
 // Validate that required environment variables are set
 if (isNaN(CHAIN_ID)) {

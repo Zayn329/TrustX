@@ -90,6 +90,14 @@ textarea {
   .status-critical {
     @apply border-rose-300/20 bg-rose-300/10 text-rose-200;
   }
+
+  .status-info {
+    @apply border-cyan-300/20 bg-cyan-300/10 text-cyan-200;
+  }
+
+  .status-neutral {
+    @apply border-slate-600/60 bg-slate-800/70 text-slate-300;
+  }
 }
 
 ::selection {

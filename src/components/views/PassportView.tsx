@@ -175,7 +175,7 @@ export const PassportView: React.FC = () => {
                     <span>{evt.reason}</span>
                   </div>
                   <div className="font-mono text-[10px] text-slate-500">
-                    Tx: {evt.txHash} • {new Date(evt.timestamp).toLocaleString()}
+                    {evt.source === 'seeded_demo' ? 'Seeded demo history' : `Tx: ${evt.txHash}`} • {new Date(evt.timestamp).toLocaleString()}
                   </div>
                 </div>
 

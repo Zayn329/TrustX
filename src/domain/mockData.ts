@@ -157,7 +157,7 @@ export const INITIAL_ESCROWS: Escrow[] = [
     currency: 'USDC',
     status: 'locked',
     companyAddress: '0x8f23A90C...41bC',
-    escrowContractAddress: '0xTrustEscrowVault_101',
+    escrowContractAddress: '',
     researcherAddress: '0x71c89a42e12b'
   },
   {
@@ -167,7 +167,7 @@ export const INITIAL_ESCROWS: Escrow[] = [
     currency: 'USDC',
     status: 'funded',
     companyAddress: '0x33A19eF1...889a',
-    escrowContractAddress: '0xTrustEscrowVault_102'
+    escrowContractAddress: ''
   }
 ];
 
@@ -194,7 +194,8 @@ export const INITIAL_PROOFS: Proof[] = [
     contentHash: '0xa8f391c49e8832a104b291c7784f1122aef902b54d6199321c882103410f11aa',
     signature: 'sig_42e12b_a8f391c4',
     timestamp: '2025-02-10T11:15:05Z',
-    proofStatus: 'anchored_on_chain'
+    proofStatus: 'generated',
+    source: 'seeded_demo'
   }
 ];
 
@@ -217,7 +218,8 @@ export const INITIAL_REPUTATION_EVENTS: ReputationEvent[] = [
     delta: 5,
     reason: 'Verified Critical vulnerability submission (Bounty #101)',
     timestamp: '2025-02-11T09:40:00Z',
-    txHash: '0x99182371abf31a293810248812c300841203002a71f01c29302194012'
+    txHash: '0x99182371abf31a293810248812c300841203002a71f01c29302194012',
+    source: 'seeded_demo'
   }
 ];
 
@@ -230,6 +232,7 @@ export const INITIAL_BLOCKCHAIN_EVENTS: BlockchainEvent[] = [
     timestamp: '2025-02-01T08:00:00Z',
     actor: 'did:trust:0xorg_nexus_pay',
     status: 'confirmed',
+    source: 'seeded_demo',
     details: 'Bounty "Smart Contract Reentrancy" created with 25,000 USDC escrow.'
   },
   {
@@ -240,7 +243,8 @@ export const INITIAL_BLOCKCHAIN_EVENTS: BlockchainEvent[] = [
     timestamp: '2025-02-01T08:02:00Z',
     actor: 'did:trust:0xorg_nexus_pay',
     status: 'confirmed',
-    details: 'Smart Contract Escrow 0xTrustEscrowVault_101 funded with 25,000 USDC.'
+    source: 'seeded_demo',
+    details: 'Seeded demo escrow history: 25,000 USDC-equivalent display value represented as ETH escrow.'
   },
   {
     id: 'blk-3',
@@ -250,6 +254,7 @@ export const INITIAL_BLOCKCHAIN_EVENTS: BlockchainEvent[] = [
     timestamp: '2025-02-10T11:15:00Z',
     actor: 'did:trust:0x71c89a42e12b',
     status: 'confirmed',
+    source: 'seeded_demo',
     details: 'Vulnerability report rep-8801 registered.'
   },
   {
@@ -260,6 +265,7 @@ export const INITIAL_BLOCKCHAIN_EVENTS: BlockchainEvent[] = [
     timestamp: '2025-02-10T11:15:05Z',
     actor: 'did:trust:0x71c89a42e12b',
     status: 'confirmed',
+    source: 'seeded_demo',
     details: 'Proof hash 0xa8f391c49e... anchored to block.'
   },
   {
@@ -270,6 +276,7 @@ export const INITIAL_BLOCKCHAIN_EVENTS: BlockchainEvent[] = [
     timestamp: '2025-02-11T09:40:00Z',
     actor: 'did:trust:0xorg_nexus_pay',
     status: 'confirmed',
+    source: 'seeded_demo',
     details: 'Technical verification recorded: VALID.'
   },
   {
@@ -280,6 +287,7 @@ export const INITIAL_BLOCKCHAIN_EVENTS: BlockchainEvent[] = [
     timestamp: '2025-02-11T09:40:00Z',
     actor: 'Trust Engine Protocol',
     status: 'confirmed',
+    source: 'seeded_demo',
     details: 'Researcher trust score increased (+5 points).'
   }
 ];

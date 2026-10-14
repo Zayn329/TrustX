@@ -6,10 +6,15 @@ export const ArbitrationCourtView: React.FC = () => {
   const { cases, castJurorVote } = useArbitrationStore();
   const [voteToast, setVoteToast] = useState<string | null>(null);
 
-  const handleVote = (disputeId: string, choice: 'Researcher' | 'Company') => {
-    castJurorVote(disputeId, choice);
-    setVoteToast(`Juror vote recorded for ${choice}! Consensus updated.`);
-    setTimeout(() => setVoteToast(null), 3000);
+  const handleVote = async (disputeId: string, choice: 'Researcher' | 'Company') => {
+    try {
+      await castJurorVote(disputeId, choice);
+      setVoteToast(`Juror vote confirmed on Sepolia for ${choice}.`);
+      setTimeout(() => setVoteToast(null), 3000);
+    } catch (error) {
+      setVoteToast(error instanceof Error ? error.message : String(error));
+      setTimeout(() => setVoteToast(null), 4000);
+    }
   };
 
   return (

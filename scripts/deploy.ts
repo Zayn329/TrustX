@@ -1,113 +1,32 @@
 /**
- * Production Hardhat / Ethers Deployment Script for Trust Engine Smart Contracts
+ * Authoritative deployment entry point for the Trust Engine contracts.
  *
- * Usage:
- *   npx hardhat run scripts/deploy.ts --network sepolia
+ * Use the CommonJS runner from the repository root:
+ *   npm run contracts:deploy:sepolia
+ *
+ * This source file intentionally contains no simulated-address fallback.
+ * The runnable implementation is scripts/deploy-sepolia.cjs, which fails
+ * loudly when RPC, signer, or Sepolia configuration is missing.
  */
 
 export interface DeploymentAddresses {
   reputationRegistry: string;
   disputeArbitration: string;
+  proofRegistry: string;
   trustBountyEscrow: string;
-  chainlinkOracleBridge: string;
   deployedAt: string;
-  network: string;
+  network: 'sepolia';
 }
 
-/**
- * Attempts real Ethers / Hardhat EVM network deployment if Hardhat Runtime Environment (hre) is available.
- */
-export async function deployContracts(networkName: string = 'sepolia'): Promise<DeploymentAddresses | null> {
-  const timestamp = new Date().toISOString();
-
-  try {
-    const hardhatModuleName = 'hardhat';
-    // Use dynamic string name with @vite-ignore to prevent Vite build/bundle analysis failure when Hardhat is omitted from client deps
-    const hre = await import(/* @vite-ignore */ hardhatModuleName);
-
-    if (hre && hre.ethers) {
-      console.log(`[DEPLOY] Executing live Hardhat/Ethers deployment to network: ${networkName}...`);
-
-      const ReputationRegistry = await hre.ethers.getContractFactory('ReputationRegistry');
-      const reputationRegistryContract = await ReputationRegistry.deploy();
-      await reputationRegistryContract.waitForDeployment();
-      const reputationRegistry = await reputationRegistryContract.getAddress();
-      console.log(`[DEPLOY] ReputationRegistry deployed at: ${reputationRegistry}`);
-
-      const DisputeArbitration = await hre.ethers.getContractFactory('DisputeArbitration');
-      const disputeArbitrationContract = await DisputeArbitration.deploy();
-      await disputeArbitrationContract.waitForDeployment();
-      const disputeArbitration = await disputeArbitrationContract.getAddress();
-      console.log(`[DEPLOY] DisputeArbitration deployed at: ${disputeArbitration}`);
-
-      const TrustBountyEscrow = await hre.ethers.getContractFactory('TrustBountyEscrow');
-      const trustBountyEscrowContract = await TrustBountyEscrow.deploy();
-      await trustBountyEscrowContract.waitForDeployment();
-      const trustBountyEscrow = await trustBountyEscrowContract.getAddress();
-      console.log(`[DEPLOY] TrustBountyEscrow deployed at: ${trustBountyEscrow}`);
-
-      const ChainlinkOracleBridge = await hre.ethers.getContractFactory('ChainlinkOracleBridge');
-      const chainlinkOracleBridgeContract = await ChainlinkOracleBridge.deploy();
-      await chainlinkOracleBridgeContract.waitForDeployment();
-      const chainlinkOracleBridge = await chainlinkOracleBridgeContract.getAddress();
-      console.log(`[DEPLOY] ChainlinkOracleBridge deployed at: ${chainlinkOracleBridge}`);
-
-      return {
-        reputationRegistry,
-        disputeArbitration,
-        trustBountyEscrow,
-        chainlinkOracleBridge,
-        deployedAt: timestamp,
-        network: networkName
-      };
-    }
-  } catch {
-    // Hardhat runtime environment unconfigured or offline — proceed to fallback
+export function validateDeploymentEnvironment(env: NodeJS.ProcessEnv = process.env): void {
+  if (!env.SEPOLIA_RPC_URL && !env.VITE_RPC_URL) {
+    throw new Error('SEPOLIA_RPC_URL or VITE_RPC_URL is required for a real Sepolia deployment');
   }
-
-  return null;
-}
-
-/**
- * Simulated deployment address generator for test, CI, and dry-run verification.
- */
-export async function simulateDeployment(networkName: string = 'sepolia'): Promise<DeploymentAddresses> {
-  const timestamp = new Date().toISOString();
-
-  const reputationRegistry = '0x2222222222222222222222222222222222222222';
-  const disputeArbitration = '0x3333333333333333333333333333333333333333';
-  const trustBountyEscrow = '0x1111111111111111111111111111111111111111';
-  const chainlinkOracleBridge = '0x4444444444444444444444444444444444444444';
-
-  console.log(`[DEPLOY] Deploying Trust Engine contracts to network: ${networkName}...`);
-  console.log(`[DEPLOY] ReputationRegistry deployed at: ${reputationRegistry}`);
-  console.log(`[DEPLOY] DisputeArbitration deployed at: ${disputeArbitration}`);
-  console.log(`[DEPLOY] TrustBountyEscrow deployed at: ${trustBountyEscrow}`);
-  console.log(`[DEPLOY] ChainlinkOracleBridge deployed at: ${chainlinkOracleBridge}`);
-
-  return {
-    reputationRegistry,
-    disputeArbitration,
-    trustBountyEscrow,
-    chainlinkOracleBridge,
-    deployedAt: timestamp,
-    network: networkName
-  };
-}
-
-/**
- * Hybrid deployment orchestrator: attempts live Hardhat deployment first, falling back to simulated verification.
- */
-export async function deployOrSimulate(networkName: string = 'sepolia'): Promise<DeploymentAddresses> {
-  const liveDeployment = await deployContracts(networkName);
-  if (liveDeployment) {
-    return liveDeployment;
+  if (!env.DEPLOYER_PRIVATE_KEY || !/^0x[a-fA-F0-9]{64}$/.test(env.DEPLOYER_PRIVATE_KEY) || /^0x0{64}$/.test(env.DEPLOYER_PRIVATE_KEY)) {
+    throw new Error('DEPLOYER_PRIVATE_KEY must be a 32-byte hex private key');
   }
-  return simulateDeployment(networkName);
 }
 
-if (typeof process !== 'undefined' && process.argv && process.argv[1]?.includes('deploy.ts')) {
-  deployOrSimulate('sepolia').then((addrs) => {
-    console.log('[DEPLOY] Deployment completed successfully.', JSON.stringify(addrs, null, 2));
-  });
+export function simulatedDeploymentIsDisabled(): never {
+  throw new Error('Simulated deployment is disabled; use npm run contracts:deploy:sepolia');
 }

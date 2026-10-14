@@ -16,8 +16,8 @@ export const ProofCard: React.FC<ProofCardProps> = ({ proof, verification }) => 
           <FileKey2 className="w-5 h-5 text-blue-300" />
           <div><div className="tx-kicker">Proof record</div><span className="mt-1 block text-sm font-semibold text-slate-100">Cryptographic proof-of-discovery</span></div>
         </div>
-        <span className="status-pill status-success">
-          Anchored
+        <span className={`status-pill ${proof.proofStatus === 'anchored_on_chain' ? 'status-success' : 'status-warning'}`}>
+          {proof.proofStatus === 'anchored_on_chain' ? 'Anchored on Sepolia' : 'Seeded demo · not anchored'}
         </span>
       </div>
 
