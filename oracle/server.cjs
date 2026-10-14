@@ -36,6 +36,9 @@ const hasConfiguredSigningKey = Boolean(process.env.ORACLE_SIGNING_PRIVATE_KEY_P
 if (process.env.NODE_ENV === 'production' && !hasConfiguredSigningKey) {
   throw new Error('ORACLE_SIGNING_PRIVATE_KEY_PEM is required in production');
 }
+if (process.env.NODE_ENV === 'production' && WORKER_MODE !== 'docker') {
+  throw new Error('ORACLE_WORKER_MODE=docker is required in production');
+}
 const keyPair = hasConfiguredSigningKey
   ? crypto.createPrivateKey(process.env.ORACLE_SIGNING_PRIVATE_KEY_PEM)
   : crypto.generateKeyPairSync('ed25519').privateKey;
