@@ -70,6 +70,7 @@ export interface Proof {
   signature: string;
   timestamp: string;
   proofStatus: ProofStatus;
+  source?: 'receipt' | 'seeded_demo';
 }
 
 export type VerificationStatus = 'pending' | 'valid' | 'invalid' | 'disputed';
@@ -91,6 +92,7 @@ export interface ReputationEvent {
   reason: string;
   timestamp: string;
   txHash: string;
+  source?: 'receipt' | 'rpc_log' | 'seeded_demo';
 }
 
 export type EscrowStatus = 'funded' | 'locked' | 'released' | 'disputed';
@@ -124,6 +126,7 @@ export interface BlockchainEvent {
   timestamp: string;
   actor: string;
   status: 'confirmed' | 'pending';
+  source?: 'receipt' | 'rpc_log' | 'indexer' | 'seeded_demo';
   details: string;
 }
 

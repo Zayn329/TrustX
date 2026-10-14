@@ -45,7 +45,7 @@ describe('useEscrowContract (Web3 Provider & Escrow Hook)', () => {
     const { result } = renderHook(() => useEscrowContract());
 
     await expect(
-      result.current.releaseEscrowOnChain('0x1111111111111111111111111111111111111111', 25000)
+      result.current.releaseEscrowOnChain('1', '0x1111111111111111111111111111111111111111')
     ).rejects.toThrow('Wallet not connected');
   });
 });

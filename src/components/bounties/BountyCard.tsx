@@ -89,7 +89,7 @@ export const BountyCard: React.FC<BountyCardProps> = ({ bounty, onSelect, perspe
         {/* Action Button Hierarchy (Issue 14) */}
         <div className="pt-5 border-t border-slate-700/40 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
-            <div className="tx-kicker">Escrow reward</div>
+            <div className="tx-kicker">Reward display (USDC equivalent)</div>
             <div className="text-2xl font-semibold tracking-[-0.04em] text-slate-100 flex items-center gap-1 mt-1">
               <DollarSign className="w-4 h-4" />
               <span>{bounty.rewardAmount.toLocaleString()}</span>
@@ -131,7 +131,7 @@ export const BountyCard: React.FC<BountyCardProps> = ({ bounty, onSelect, perspe
                     disabled={fundEscrowLoading}
                   >
                     <DollarSign className="w-3.5 h-3.5" />
-                    <span>{fundEscrowLoading ? 'Funding...' : 'Fund Escrow'}</span>
+                    <span>{fundEscrowLoading ? 'Funding Sepolia ETH...' : 'Fund ETH Escrow'}</span>
                   </button>
                 )}
                 {bounty.escrowStatus === 'funded' && (

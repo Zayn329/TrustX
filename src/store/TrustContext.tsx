@@ -26,7 +26,9 @@ import {
 import { getBounties, createBounty, updateBounty, getReports, createReport } from '../services/firestoreService';
 import { usdcToEth, generateOnChainIdFromFirestoreId, getDemoUsdcPerEth } from '../services/conversionService';
 import { useEscrowContract } from '../blockchain/useEscrowContract';
-import { generateRealTxHash } from '../domain/cryptoUtils';
+import { runSandboxEvaluation } from '../../oracle/sandboxRunner';
+import { sha256 } from '../domain/cryptoUtils';
+import { useArbitrationStore } from './useArbitrationStore';
 
 interface NewSubmissionPayload {
   bountyId: string;
@@ -65,6 +67,7 @@ interface TrustContextType {
   submitVulnerability: (payload: NewSubmissionPayload) => Promise<void>;
   verifySubmission: (reportId: string, isApproved: boolean, notes: string) => Promise<void>;
   raiseDispute: (reportId: string, reason: string, evidence: string) => Promise<void>;
+  releaseEscrow: (bountyId: string, researcherAddress: string) => Promise<void>;
   openCreateBountyModal: () => void;
   closeCreateBountyModal: () => void;
   handleCreateBounty: (formData: Omit<Bounty, 'id'>) => Promise<void>;
@@ -73,17 +76,11 @@ interface TrustContextType {
 
 const TrustContext = createContext<TrustContextType | undefined>(undefined);
 
-const ESCROW_CONTRACT_ADDRESS =
-  (typeof process !== 'undefined' && process.env?.VITE_TRUST_BOUNTY_ESCROW_ADDRESS)
-    ? process.env.VITE_TRUST_BOUNTY_ESCROW_ADDRESS
-    : (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_TRUST_BOUNTY_ESCROW_ADDRESS ||
-      '0x1111111111111111111111111111111111111111';
-
 export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [identities, setIdentities] = useState<Identity[]>(INITIAL_IDENTITIES);
   const [bounties, setBounties] = useState<Bounty[]>([]);
   const [reports, setReports] = useState<VulnerabilityReport[]>(INITIAL_REPORTS);
-  const [proofs] = useState<Proof[]>(INITIAL_PROOFS);
+  const [proofs, setProofs] = useState<Proof[]>(INITIAL_PROOFS);
   const [verifications, setVerifications] = useState<Verification[]>(INITIAL_VERIFICATIONS);
   const [reputationEvents, setReputationEvents] = useState<ReputationEvent[]>(INITIAL_REPUTATION_EVENTS);
   const [escrows, setEscrows] = useState<Escrow[]>(INITIAL_ESCROWS);
@@ -119,7 +116,18 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [fundEscrowError, setFundEscrowError] = useState<string | null>(null);
 
   // Wallet and blockchain functions - moved to component level to avoid Hook violations
-  const { wallet, isWalletOnConfiguredChain, getWalletAddress, createEscrowOnChain } = useEscrowContract();
+  const {
+    wallet,
+    isWalletOnConfiguredChain,
+    getWalletAddress,
+    createEscrowOnChain,
+    raiseDisputeOnChain,
+    releaseEscrowOnChain,
+    updateReputationOnChain,
+    signTypedDataProof,
+    anchorProofOnChain
+  } = useEscrowContract();
+  const { createArbitrationCase } = useArbitrationStore();
 
   const currentResearcher = identities[0];
 
@@ -191,12 +199,43 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         ...newReport
       };
 
-      // Update local state with the persisted report
-      setReports(prev => [reportWithId, ...prev]);
+      const proofHash = await sha256(JSON.stringify(newReport));
+      const proofNonce = Date.now();
+      const signature = await signTypedDataProof({
+        researcherDid: payload.researcherId,
+        bountyId: generateOnChainIdFromFirestoreId(payload.bountyId),
+        proofHash,
+        nonce: proofNonce
+      });
+      const anchor = await anchorProofOnChain(
+        generateOnChainIdFromFirestoreId(payload.bountyId),
+        proofHash,
+        payload.researcherId,
+        signature,
+        proofNonce
+      );
 
-      // Note: Proof anchoring, verification, and other blockchain-related steps
-      // are handled in their respective functions (verifySubmission, etc.)
-      // This function focuses solely on persistent report submission via Firestore
+      setReports(prev => [reportWithId, ...prev]);
+      setProofs(prev => [{
+        id: `proof-${reportId}`,
+        contributionId: reportId,
+        contentHash: proofHash,
+        signature,
+        timestamp: nowIso,
+        proofStatus: 'anchored_on_chain',
+        source: 'receipt'
+      }, ...prev]);
+      setBlockchainEvents(prev => [{
+        id: `${anchor.txHash}:0`,
+        eventType: 'ProofAnchored',
+        txHash: anchor.txHash,
+        blockNumber: Number(anchor.blockNumber),
+        timestamp: nowIso,
+        actor: anchor.signer,
+        status: 'confirmed',
+        source: 'receipt',
+        details: `Proof ${anchor.proofHash} anchored for bounty ${anchor.bountyId}.`
+      }, ...prev]);
 
     } catch (err) {
       console.error('[submitVulnerability] Failed to create report in Firestore:', err);
@@ -211,6 +250,17 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const nowIso = new Date().toISOString();
     const report = reports.find(r => r.id === reportId);
     if (!report) return;
+
+    const technicalResult = await runSandboxEvaluation(report.reproductionSteps);
+    const technicallyApproved = technicalResult.status === 'passed';
+    if (technicallyApproved !== isApproved) {
+      throw new Error(`Verifier result is ${technicalResult.status}; manual decision does not match technical evidence`);
+    }
+
+    let reputationResult: Awaited<ReturnType<typeof updateReputationOnChain>> | null = null;
+    if (isApproved) {
+      reputationResult = await updateReputationOnChain(report.researcherId, 3);
+    }
 
     setVerifications(prev =>
       prev.map(v =>
@@ -227,36 +277,6 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     if (isApproved) {
       const bounty = bounties.find(b => b.id === report.bountyId);
-      let txHashRep: string | undefined;
-      let txHashVer: string | undefined;
-
-      if (typeof window !== 'undefined' && window.ethereum) {
-        try {
-          const accounts = (await window.ethereum.request({ method: 'eth_accounts' })) as string[];
-          if (accounts && accounts.length > 0) {
-            txHashRep = (await window.ethereum.request({
-              method: 'eth_sendTransaction',
-              params: [{ from: accounts[0], to: ESCROW_CONTRACT_ADDRESS, value: '0x0' }]
-            })) as string;
-          }
-        } catch (err) {
-          console.warn('Live Web3 verification execution declined, using fallback simulation:', err);
-        }
-      }
-
-      txHashRep = txHashRep ?? generateRealTxHash();
-      txHashVer = txHashVer ?? generateRealTxHash();
-
-      if (bounty) {
-        setEscrows(prev =>
-          prev.map(e =>
-            e.id === bounty.escrowId
-              ? { ...e, status: 'released', researcherAddress: report.researcherId }
-              : e
-          )
-        );
-      }
-
       setIdentities(prev =>
         prev.map(id => {
           if (id.id === report.researcherId) {
@@ -273,28 +293,31 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         })
       );
 
-      const newRepEvent: ReputationEvent = {
-        id: `repevt-${Date.now()}`,
-        researcherId: report.researcherId,
-        delta: 3,
-        reason: `Verified ${report.severity} vulnerability report (${report.title})`,
-        timestamp: nowIso,
-        txHash: txHashRep
-      };
-      setReputationEvents(prev => [newRepEvent, ...prev]);
-
-      const lastBlock = blockchainEvents[0]?.blockNumber || 18420101;
-      const blkEvent: BlockchainEvent = {
-        id: `blk-${Date.now()}`,
-        eventType: 'ReputationUpdated',
-        txHash: txHashRep,
-        blockNumber: lastBlock + 1,
-        timestamp: nowIso,
-        actor: report.researcherId,
-        status: 'confirmed',
-        details: `Reputation updated for researcher ${report.researcherId}`
-      };
-      setBlockchainEvents(prev => [blkEvent, ...prev]);
+      // Verification is an application-level decision. The current escrow contract
+      // does not authorize release from this result; payout must be an explicit,
+      // receipt-confirmed company transaction through the escrow hook.
+      if (reputationResult) {
+        setReputationEvents(prev => [{
+          id: `${reputationResult!.txHash}:0`,
+          researcherId: report.researcherId,
+          delta: Number(reputationResult!.increment),
+          reason: `Technical verification approved for ${report.id}`,
+          timestamp: nowIso,
+          txHash: reputationResult!.txHash,
+          source: 'receipt'
+        }, ...prev]);
+        setBlockchainEvents(prev => [{
+          id: `${reputationResult!.txHash}:0`,
+          eventType: 'ReputationUpdated',
+          txHash: reputationResult!.txHash,
+          blockNumber: Number(reputationResult!.blockNumber),
+          timestamp: nowIso,
+          actor: wallet.address || report.researcherId,
+          status: 'confirmed',
+          source: 'receipt',
+          details: `Reputation updated for ${reputationResult!.did}; score ${reputationResult!.newScore}.`
+        }, ...prev]);
+      }
     }
   };
 
@@ -305,23 +328,17 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const nowIso = new Date().toISOString();
     const disputeId = `disp-${Date.now().toString().slice(-4)}`;
 
-    let txHashDisp: string | undefined;
-
-    if (typeof window !== 'undefined' && window.ethereum) {
-      try {
-        const accounts = (await window.ethereum.request({ method: 'eth_accounts' })) as string[];
-        if (accounts && accounts.length > 0) {
-          txHashDisp = (await window.ethereum.request({
-            method: 'eth_sendTransaction',
-            params: [{ from: accounts[0], to: ESCROW_CONTRACT_ADDRESS, value: '0x0' }]
-          })) as string;
-        }
-      } catch (err) {
-        console.warn('Live Web3 dispute execution declined, using fallback simulation:', err);
-      }
+    const report = reports.find(r => r.id === reportId);
+    if (!report) throw new Error('Report not found');
+    const bounty = bounties.find(b => b.id === report.bountyId);
+    if (!bounty || !/^\d+$/.test(bounty.escrowId)) {
+      throw new Error('A confirmed on-chain escrow ID is required before raising a dispute');
     }
-
-    txHashDisp = txHashDisp ?? generateRealTxHash();
+    const chainResult = await raiseDisputeOnChain(bounty.escrowId);
+    const arbitrationCase = await createArbitrationCase(
+      bounty.escrowId,
+      generateOnChainIdFromFirestoreId(reportId)
+    );
 
     const newDispute: Dispute = {
       id: disputeId,
@@ -339,18 +356,60 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       prev.map(v => (v.contributionId === reportId ? { ...v, status: 'disputed' } : v))
     );
 
-    const lastBlock = blockchainEvents[0]?.blockNumber || 18420101;
     const blkEvent: BlockchainEvent = {
-      id: `blk-${Date.now()}`,
+      id: `${chainResult.txHash}:0`,
       eventType: 'DisputeRaised',
-      txHash: txHashDisp,
-      blockNumber: lastBlock + 1,
+      txHash: chainResult.txHash,
+      blockNumber: Number(chainResult.blockNumber),
       timestamp: nowIso,
-      actor: currentResearcher.id,
+      actor: chainResult.disputedBy,
       status: 'confirmed',
-      details: `Dispute raised for submission ${reportId}: ${reason}`
+      source: 'receipt',
+      details: `Dispute raised for submission ${reportId}: ${reason}. Arbitration case confirmed in ${arbitrationCase.txHash}.`
     };
     setBlockchainEvents(prev => [blkEvent, ...prev]);
+  };
+
+  const releaseEscrow = async (bountyId: string, researcherAddress: string) => {
+    const bounty = bounties.find((item) => item.id === bountyId);
+    if (!bounty) throw new Error('Bounty not found');
+    if (!/^\d+$/.test(bounty.escrowId)) {
+      throw new Error('A confirmed on-chain escrow ID is required before release');
+    }
+    if (bounty.escrowStatus !== 'funded' && bounty.escrowStatus !== 'locked') {
+      throw new Error('Escrow is not eligible for release');
+    }
+
+    const result = await releaseEscrowOnChain(bounty.escrowId, researcherAddress);
+    const nowIso = new Date().toISOString();
+
+    try {
+      await updateBounty(bounty.id, {
+        escrowStatus: 'released',
+        escrowId: result.escrowId,
+        fundingTxHash: bounty.fundingTxHash
+      });
+    } catch (error) {
+      console.warn('Escrow release confirmed on-chain but projection sync failed:', error);
+    }
+
+    setBounties((prev) => prev.map((item) => item.id === bounty.id
+      ? { ...item, escrowStatus: 'released', escrowId: result.escrowId }
+      : item));
+    setEscrows((prev) => prev.map((item) => item.id === result.escrowId
+      ? { ...item, status: 'released', researcherAddress: result.researcher }
+      : item));
+    setBlockchainEvents((prev) => [{
+      id: `${result.txHash}:0`,
+      eventType: 'EscrowReleased',
+      txHash: result.txHash,
+      blockNumber: Number(result.blockNumber),
+      timestamp: nowIso,
+      actor: result.researcher,
+      status: 'confirmed',
+      source: 'receipt',
+      details: `Escrow ${result.escrowId} released to ${result.researcher} for ${result.amount} wei.`
+    }, ...prev]);
   };
 
   const openCreateBountyModal = () => {
@@ -428,10 +487,18 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const fundEscrow = async (bountyId: string) => {
+    const nowIso = new Date().toISOString();
     setFundEscrowLoading(true);
     setFundEscrowError(null);
 
-    let result: { txHash: string; escrowId: string } | null = null;
+    let result: {
+      txHash: string;
+      escrowId: string;
+      bountyId: string;
+      companyAddress: string;
+      amount: string;
+      blockNumber: string;
+    } | null = null;
     try {
       // Get the bounty to validate
       const bounty = bounties.find(b => b.id === bountyId);
@@ -447,9 +514,10 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         throw new Error('Escrow already funded for this bounty');
       }
 
-      // Validate currency - only support USDC for demo conversion
+      // Bounties are currently denominated in USDC-equivalent display values;
+      // the deployed escrow contract receives native Sepolia ETH.
       if (bounty.rewardCurrency !== 'USDC') {
-        throw new Error('Only USDC rewards are supported for escrow funding in this demo');
+        throw new Error('Only USDC-equivalent display rewards are supported for ETH escrow funding in this demo');
       }
 
       // Validate reward amount
@@ -473,7 +541,7 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         throw new Error('Invalid wallet address');
       }
 
-      // Convert USDC to ETH using demo rate
+      // Convert the display value to native Sepolia ETH using the demo rate.
       const ethAmount = parseFloat(usdcToEth(bounty.rewardAmount));
       if (ethAmount <= 0) {
         throw new Error('Invalid ETH amount after conversion');
@@ -495,7 +563,11 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       };
 
       console.log('[fundEscrow] Attempting Firestore update for bounty:', bounty.id, 'with payload:', updatePayload);
-      await updateBounty(bounty.id, updatePayload);
+      try {
+        await updateBounty(bounty.id, updatePayload);
+      } catch (error) {
+        console.warn('Escrow funding confirmed on-chain but projection sync failed:', error);
+      }
       console.log('[fundEscrow] Firestore update completed for bounty:', bounty.id);
 
       // Update local state optimistically with all persisted values
@@ -513,6 +585,34 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             : b
         )
       );
+
+      setEscrows(prev => {
+        const nextEscrow: Escrow = {
+          id: result!.escrowId,
+          bountyId: bounty.id,
+          amount: parseFloat(usdcToEth(bounty.rewardAmount)),
+          currency: 'ETH',
+          status: 'funded',
+          companyAddress: walletAddress,
+          escrowContractAddress: import.meta.env.VITE_TRUST_BOUNTY_ESCROW_ADDRESS,
+        };
+        const existing = prev.some((escrow) => escrow.id === nextEscrow.id || escrow.bountyId === bounty.id);
+        return existing
+          ? prev.map((escrow) => escrow.bountyId === bounty.id ? { ...escrow, ...nextEscrow } : escrow)
+          : [nextEscrow, ...prev];
+      });
+
+      setBlockchainEvents(prev => [{
+        id: `${result!.txHash}:0`,
+        eventType: 'EscrowDeposited',
+        txHash: result!.txHash,
+        blockNumber: Number(result!.blockNumber),
+        timestamp: nowIso,
+        actor: result!.companyAddress,
+        status: 'confirmed',
+        source: 'receipt',
+        details: `Escrow ${result!.escrowId} funded for bounty ${result!.bountyId} with ${result!.amount} wei.`
+      }, ...prev]);
 
     } catch (err) {
       let errorMessage = err instanceof Error ? err.message : String(err);
@@ -543,6 +643,7 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         submitVulnerability,
         verifySubmission,
         raiseDispute,
+        releaseEscrow,
         createBountyModalOpen,
         createBountyForm,
         createBountyLoading,

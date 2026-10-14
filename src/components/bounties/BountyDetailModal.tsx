@@ -10,10 +10,16 @@ interface BountyDetailModalProps {
 }
 
 export const BountyDetailModal: React.FC<BountyDetailModalProps> = ({ bounty, onClose }) => {
-  const { escrows } = useTrust();
-  const [showSubmitModal, setShowSubmitModal] = useState(false);
-
+  const { escrows, releaseEscrow } = useTrust();
   const escrow = escrows.find(e => e.id === bounty.escrowId);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [researcherAddress, setResearcherAddress] = useState(escrow?.researcherAddress || '');
+  const [releaseError, setReleaseError] = useState<string | null>(null);
+  const [isReleasing, setIsReleasing] = useState(false);
+
+  useEffect(() => {
+    setResearcherAddress(escrow?.researcherAddress || '');
+  }, [escrow?.researcherAddress]);
 
   // Escape Key listener (Issue 26)
   useEffect(() => {
@@ -66,7 +72,7 @@ export const BountyDetailModal: React.FC<BountyDetailModalProps> = ({ bounty, on
             <div className="flex items-center gap-1.5">
               <Lock className="w-4 h-4 text-indigo-400" />
               <span>Escrow Contract:</span>
-              <span className="font-mono text-slate-300">{escrow?.escrowContractAddress || 'Smart Escrow'}</span>
+              <span className="font-mono text-slate-300">{escrow?.escrowContractAddress || 'Seeded demo — no live address'}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <Calendar className="w-4 h-4 text-slate-400" />
@@ -110,7 +116,7 @@ export const BountyDetailModal: React.FC<BountyDetailModalProps> = ({ bounty, on
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
                 <div>
                   <span className="text-slate-500 block text-[10px]">Escrow Amount:</span>
-                  <span className="font-bold text-emerald-400">${escrow?.amount.toLocaleString()} USDC</span>
+                  <span className="font-bold text-emerald-400">{escrow?.currency === 'ETH' ? `${escrow.amount.toFixed(6)} ETH` : `${escrow?.amount.toLocaleString()} USDC (seeded)`}</span>
                 </div>
                 <div>
                   <span className="text-slate-500 block text-[10px]">Status:</span>
@@ -121,6 +127,39 @@ export const BountyDetailModal: React.FC<BountyDetailModalProps> = ({ bounty, on
                   <span className="font-mono text-slate-400">{escrow?.companyAddress}</span>
                 </div>
               </div>
+              {bounty.escrowStatus === 'funded' && (
+                <div className="mt-4 border-t border-slate-800 pt-4 space-y-2">
+                  <label className="block text-[10px] uppercase tracking-wider text-slate-500" htmlFor="researcher-payout-address">
+                    Researcher payout address
+                  </label>
+                  <input
+                    id="researcher-payout-address"
+                    value={researcherAddress}
+                    onChange={(event) => setResearcherAddress(event.target.value)}
+                    placeholder="0x..."
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs text-slate-200 outline-none focus:border-indigo-400"
+                  />
+                  <button
+                    disabled={isReleasing || !/^0x[a-fA-F0-9]{40}$/.test(researcherAddress) || !/^\d+$/.test(bounty.escrowId)}
+                    onClick={async () => {
+                      setIsReleasing(true);
+                      setReleaseError(null);
+                      try {
+                        await releaseEscrow(bounty.id, researcherAddress);
+                      } catch (error) {
+                        setReleaseError(error instanceof Error ? error.message : String(error));
+                      } finally {
+                        setIsReleasing(false);
+                      }
+                    }}
+                    className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {isReleasing ? 'Confirming Sepolia payout...' : 'Release ETH escrow'}
+                  </button>
+                  {releaseError && <p className="text-[11px] text-red-300">{releaseError}</p>}
+                  <p className="text-[10px] text-slate-500">Company-authorized payout: the connected funding wallet must approve the transaction.</p>
+                </div>
+              )}
             </div>
           </div>
 

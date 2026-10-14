@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "contracts:compile": "hardhat compile",
+    "contracts:test": "hardhat test",
+    "contracts:deploy:sepolia": "hardhat run scripts/deploy-sepolia.cjs --network sepolia",
+    "contracts:check:sepolia": "node scripts/check-sepolia.cjs"
   },
   "dependencies": {
     "firebase": "^12.19.0",
@@ -17,6 +21,11 @@
     "viem": "^2.57.2"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^3.0.8",
+    "@nomicfoundation/hardhat-verify": "^2.0.14",
+    "ethers": "^6.13.5",
+    "hardhat": "^2.22.19",
+    "ts-node": "^10.9.2",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^26.5.0",

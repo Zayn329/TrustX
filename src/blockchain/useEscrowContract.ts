@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import { WalletState, INITIAL_WALLET_STATE } from './wagmiConfig';
-import { Eip712ProofPayload, hashEip712ProofPayload, generateEcdsaSignature } from '../domain/cryptoUtils';
-import { isValidEthAddress, isConfiguredChain, blockchainConfig } from './config';
-import { walletClient, publicClient } from './viemClient';
-import { parseAbiItem, Address, encodeFunctionData, decodeEventLog, createPublicClient, custom } from 'viem';
+import { Eip712ProofPayload } from '../domain/cryptoUtils';
+import { isValidEthAddress, isConfiguredChain, blockchainConfig, REPUTATION_REGISTRY_ADDRESS, PROOF_REGISTRY_ADDRESS } from './config';
+import { walletClient, publicClient, checkEscrowDeployment, checkContractBytecode } from './viemClient';
+import { TRUST_BOUNTY_ESCROW_ABI } from './escrowAbi';
+import { REPUTATION_REGISTRY_ABI } from './reputationAbi';
+import { PROOF_REGISTRY_ABI } from './proofRegistryAbi';
+import { parseAbiItem, Address, encodeFunctionData, decodeEventLog, createPublicClient, custom, getAddress } from 'viem';
 import { sepolia } from 'viem/chains';
+import { getPendingBlockchainTransactions, recordBlockchainTransaction, updateBlockchainTransaction } from './transactionJournal';
 
 declare global {
   interface Window {
@@ -19,6 +23,32 @@ declare global {
 export function useEscrowContract() {
   const [wallet, setWallet] = useState<WalletState>(INITIAL_WALLET_STATE);
   const [isPending, setIsPending] = useState(false);
+
+  const ensureEscrowDeployment = async () => {
+    const status = await checkEscrowDeployment();
+    if (!status.hasBytecode) {
+      throw new Error('Configured escrow address has no contract bytecode on Sepolia');
+    }
+    return status;
+  };
+
+  const reconcilePendingTransactions = async () => {
+    const pending = getPendingBlockchainTransactions();
+    const reconciled: Array<{ txHash: string; state: 'confirmed' | 'reverted' | 'pending' }> = [];
+
+    for (const entry of pending) {
+      try {
+        const receipt = await publicClient.getTransactionReceipt({ hash: entry.txHash as `0x${string}` });
+        const state = receipt.status === 'success' ? 'confirmed' : 'reverted';
+        updateBlockchainTransaction(entry.txHash, state);
+        reconciled.push({ txHash: entry.txHash, state });
+      } catch {
+        reconciled.push({ txHash: entry.txHash, state: 'pending' });
+      }
+    }
+
+    return reconciled;
+  };
 
   // Helper to format wei to ETH with sensible precision
   const formatBalance = (wei: bigint): string => {
@@ -145,93 +175,135 @@ export function useEscrowContract() {
   const signTypedDataProof = async (payload: Eip712ProofPayload): Promise<string> => {
     setIsPending(true);
 
-    if (typeof window !== 'undefined' && window.ethereum && wallet.isConnected && wallet.address) {
-      try {
-        // Use the actual contract address from config
-        const contractAddress = blockchainConfig.trustBountyEscrowAddress;
-        const domain = {
-          name: 'Trust Engine Protocol',
-          version: '1.0',
-          chainId: blockchainConfig.chainId,
-          verifyingContract: contractAddress
-        };
+    try {
+      if (typeof window === 'undefined' || !window.ethereum || !wallet.isConnected || !wallet.address) {
+        throw new Error('A connected wallet is required to create a cryptographic proof signature');
+      }
+      if (!isWalletOnConfiguredChain()) {
+        throw new Error('Wallet is not on the configured chain');
+      }
 
-        const types = {
+      const typedData = JSON.stringify({
+        types: {
+          EIP712Domain: [
+            { name: 'name', type: 'string' },
+            { name: 'version', type: 'string' },
+            { name: 'chainId', type: 'uint256' },
+            { name: 'verifyingContract', type: 'address' }
+          ],
           ProofAnchor: [
             { name: 'researcherDid', type: 'string' },
             { name: 'bountyId', type: 'string' },
             { name: 'proofHash', type: 'bytes32' },
             { name: 'nonce', type: 'uint256' }
           ]
-        };
+        },
+        domain: {
+          name: 'Trust Engine Protocol',
+          version: '1.0',
+          chainId: blockchainConfig.chainId,
+          verifyingContract: PROOF_REGISTRY_ADDRESS
+        },
+        primaryType: 'ProofAnchor',
+        message: payload
+      });
 
-        const typedData = JSON.stringify({
-          types,
-          domain,
-          primaryType: 'ProofAnchor',
-          message: payload
-        });
-
-        const signature = (await window.ethereum.request({
-          method: 'eth_signTypedData_v4',
-          params: [wallet.address, typedData]
-        })) as string;
-
-        setIsPending(false);
-        return signature;
-      } catch (err) {
-        console.warn('EIP-712 wallet prompt declined:', err);
-        // Fall back to cryptographic signature if wallet signature fails
-      }
+      return await window.ethereum.request({
+        method: 'eth_signTypedData_v4',
+        params: [wallet.address, typedData]
+      }) as string;
+    } finally {
+      setIsPending(false);
     }
-
-    // Cryptographic fallback signature (only if wallet not connected or signature fails)
-    const typedHash = await hashEip712ProofPayload(payload);
-    setIsPending(false);
-    return generateEcdsaSignature(payload.researcherDid, typedHash);
   };
 
-  const releaseEscrowOnChain = async (_escrowContractAddress: string, _amount: number) => {
+  const releaseEscrowOnChain = async (escrowId: string, researcherAddress: string) => {
     setIsPending(true);
 
-    // Validate the contract address
-    const targetAddress = _escrowContractAddress.startsWith('0x') && _escrowContractAddress.length === 42
-      ? _escrowContractAddress
-      : blockchainConfig.trustBountyEscrowAddress;
-
-    if (!isValidEthAddress(targetAddress)) {
+    if (!isValidEthAddress(blockchainConfig.trustBountyEscrowAddress)) {
       setIsPending(false);
       throw new Error('Invalid contract address');
     }
 
-    if (typeof window !== 'undefined' && window.ethereum && wallet.isConnected && wallet.address) {
-      try {
-        const txHash = (await window.ethereum.request({
-          method: 'eth_sendTransaction',
-          params: [
-            {
-              from: wallet.address,
-              to: targetAddress,
-              value: '0x0'
-            }
-          ]
-        })) as string;
-
-        setIsPending(false);
-        return {
-          success: true,
-          txHash
-        };
-      } catch (err) {
-        console.warn('On-chain transaction execution failed or rejected:', err);
-        // Don't simulate - throw the error so UI can handle it properly
-        throw err;
-      }
+    const parsedEscrowId = BigInt(escrowId);
+    if (parsedEscrowId <= 0n) {
+      setIsPending(false);
+      throw new Error('Invalid escrow ID');
     }
 
-    // No fallback simulation - throw error if not connected
-    setIsPending(false);
-    throw new Error('Wallet not connected');
+    if (!isValidEthAddress(researcherAddress) || researcherAddress === '0x0000000000000000000000000000000000000000') {
+      setIsPending(false);
+      throw new Error('Invalid researcher address');
+    }
+
+    if (!wallet.isConnected || !wallet.address) {
+      setIsPending(false);
+      throw new Error('Wallet not connected');
+    }
+    if (!isWalletOnConfiguredChain()) {
+      setIsPending(false);
+      throw new Error('Wallet is not on the configured chain');
+    }
+
+    try {
+      await ensureEscrowDeployment();
+      const client = walletClient();
+      if (!client) throw new Error('Unable to initialize wallet client');
+
+      const data = encodeFunctionData({
+        abi: TRUST_BOUNTY_ESCROW_ABI,
+        functionName: 'releaseEscrow',
+        args: [parsedEscrowId, getAddress(researcherAddress) as Address]
+      });
+      const hash = await client.sendTransaction({
+        account: wallet.address as Address,
+        to: blockchainConfig.trustBountyEscrowAddress as Address,
+        data
+      });
+      recordBlockchainTransaction({
+        txHash: hash,
+        action: 'release_escrow',
+        chainId: blockchainConfig.chainId,
+        contractAddress: blockchainConfig.trustBountyEscrowAddress,
+        submittedAt: new Date().toISOString(),
+        state: 'submitted',
+        arguments: { escrowId, researcherAddress }
+      });
+      const receiptClient = createPublicClient({ chain: sepolia, transport: custom(window.ethereum!) });
+      const receipt = await receiptClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== 'success') {
+        updateBlockchainTransaction(hash, 'reverted');
+        throw new Error('Escrow release transaction reverted');
+      }
+
+      const event = receipt.logs
+        .map((log) => {
+          try {
+            return decodeEventLog({ abi: TRUST_BOUNTY_ESCROW_ABI, data: log.data, topics: log.topics });
+          } catch {
+            return null;
+          }
+        })
+        .find((decoded) => decoded?.eventName === 'EscrowReleased');
+      if (!event || event.eventName !== 'EscrowReleased') throw new Error('EscrowReleased event not found in receipt');
+
+      updateBlockchainTransaction(hash, 'confirmed');
+      setIsPending(false);
+      return {
+        success: true,
+        txHash: hash,
+        escrowId: event.args.escrowId.toString(),
+        researcher: event.args.researcher,
+        amount: event.args.amount.toString(),
+        blockNumber: receipt.blockNumber.toString()
+      };
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('timeout')) {
+        // The transaction may still be mining; the journal keeps it recoverable.
+      }
+      setIsPending(false);
+      throw err;
+    }
   };
 
   const createEscrowOnChain = async (_bountyId: string, amountEth: number) => {
@@ -258,6 +330,16 @@ export function useEscrowContract() {
 
     if (typeof window !== 'undefined' && window.ethereum && wallet.isConnected && wallet.address) {
       try {
+        if (!isWalletOnConfiguredChain()) {
+          throw new Error('Wallet is not on the configured chain');
+        }
+        const pendingFunding = getPendingBlockchainTransactions().some((entry) =>
+          entry.action === 'fund_escrow' && entry.arguments.bountyId === _bountyId
+        );
+        if (pendingFunding) {
+          throw new Error('A funding transaction for this bounty is already pending reconciliation');
+        }
+        await ensureEscrowDeployment();
         // Convert ETH to wei
         const value = BigInt(Math.floor(amountEth * 1e18));
 
@@ -281,6 +363,15 @@ export function useEscrowContract() {
           value,
           data
         });
+        recordBlockchainTransaction({
+          txHash: hash,
+          action: 'fund_escrow',
+          chainId: blockchainConfig.chainId,
+          contractAddress: blockchainConfig.trustBountyEscrowAddress,
+          submittedAt: new Date().toISOString(),
+          state: 'submitted',
+          arguments: { bountyId: _bountyId, amountEth: String(amountEth) }
+        });
 
         // Wait for transaction receipt using wallet provider if available (to avoid CORS issues with public RPC)
         let receipt;
@@ -296,6 +387,7 @@ export function useEscrowContract() {
 
         // Check if transaction was successful
         if (receipt.status !== 'success') {
+          updateBlockchainTransaction(hash, 'reverted');
           throw new Error('Transaction failed');
         }
 
@@ -363,6 +455,7 @@ export function useEscrowContract() {
           throw new Error('EscrowFunded event not found in transaction receipt');
         }
 
+        updateBlockchainTransaction(hash, 'confirmed');
         setIsPending(false);
         return {
           success: true,
@@ -386,40 +479,192 @@ export function useEscrowContract() {
     throw new Error('Wallet not connected');
   };
 
-  const castJurorVoteOnChain = async (_disputeId: string, _vote: 'ResearcherWins' | 'CompanyWins') => {
-    setIsPending(true);
-    const disputeContractAddress = import.meta.env.VITE_DISPUTE_ARBITRATION_ADDRESS;
-
-    if (!isValidEthAddress(disputeContractAddress)) {
-      setIsPending(false);
-      throw new Error('Invalid dispute contract address');
+  const updateReputationOnChain = async (did: string, increment: number) => {
+    if (!isValidEthAddress(REPUTATION_REGISTRY_ADDRESS)) {
+      throw new Error('Reputation registry address is not configured');
     }
-
-    if (typeof window !== 'undefined' && window.ethereum && wallet.isConnected && wallet.address) {
+    if (!did.trim() || !Number.isInteger(increment) || increment <= 0) {
+      throw new Error('Invalid reputation update');
+    }
+    if (!wallet.isConnected || !wallet.address || !isWalletOnConfiguredChain()) {
+      throw new Error('A connected Sepolia wallet is required for reputation updates');
+    }
+    await checkContractBytecode(REPUTATION_REGISTRY_ADDRESS);
+    const client = walletClient();
+    if (!client) throw new Error('Unable to initialize wallet client');
+    const data = encodeFunctionData({
+      abi: REPUTATION_REGISTRY_ABI,
+      functionName: 'updateReputation',
+      args: [did, BigInt(increment)]
+    });
+    const hash = await client.sendTransaction({
+      account: wallet.address as Address,
+      to: REPUTATION_REGISTRY_ADDRESS as Address,
+      data
+    });
+    recordBlockchainTransaction({
+      txHash: hash,
+      action: 'update_reputation',
+      chainId: blockchainConfig.chainId,
+      contractAddress: REPUTATION_REGISTRY_ADDRESS,
+      submittedAt: new Date().toISOString(),
+      state: 'submitted',
+      arguments: { did, increment: String(increment) }
+    });
+    const receiptClient = createPublicClient({ chain: sepolia, transport: custom(window.ethereum!) });
+    const receipt = await receiptClient.waitForTransactionReceipt({ hash });
+    if (receipt.status !== 'success') {
+      updateBlockchainTransaction(hash, 'reverted');
+      throw new Error('Reputation update transaction reverted');
+    }
+    const event = receipt.logs.map((log) => {
       try {
-        const txHash = (await window.ethereum.request({
-          method: 'eth_sendTransaction',
-          params: [
-            {
-              from: wallet.address,
-              to: disputeContractAddress,
-              value: '0x0'
-            }
-          ]
-        })) as string;
-
-        setIsPending(false);
-        return { success: true, txHash };
-      } catch (err) {
-        console.warn('On-chain juror vote transaction failed or rejected:', err);
-        // Don't simulate - throw the error so UI can handle it properly
-        throw err;
+        return decodeEventLog({ abi: REPUTATION_REGISTRY_ABI, data: log.data, topics: log.topics });
+      } catch {
+        return null;
       }
+    }).find((decoded) => decoded?.eventName === 'ReputationUpdated');
+    if (!event || event.eventName !== 'ReputationUpdated') {
+      throw new Error('ReputationUpdated event not found in receipt');
+    }
+    updateBlockchainTransaction(hash, 'confirmed');
+    return {
+      txHash: hash,
+      did: event.args.did,
+      newScore: event.args.newScore.toString(),
+      increment: event.args.increment.toString(),
+      blockNumber: receipt.blockNumber.toString()
+    };
+  };
+
+  const anchorProofOnChain = async (bountyId: string, proofHash: string, researcherDid: string, signature: string, nonce: number) => {
+    if (!isValidEthAddress(PROOF_REGISTRY_ADDRESS)) throw new Error('Proof registry address is not configured');
+    if (!/^0x[a-fA-F0-9]{64}$/.test(proofHash)) throw new Error('Proof hash must be a bytes32 value');
+    if (!researcherDid.trim() || !/^0x[a-fA-F0-9]+$/.test(signature) || !Number.isSafeInteger(nonce) || nonce < 0) throw new Error('Invalid proof identity, signature, or nonce');
+    if (!wallet.isConnected || !wallet.address || !isWalletOnConfiguredChain()) {
+      throw new Error('A connected Sepolia wallet is required for proof anchoring');
+    }
+    await checkContractBytecode(PROOF_REGISTRY_ADDRESS);
+    const client = walletClient();
+    if (!client) throw new Error('Unable to initialize wallet client');
+    const data = encodeFunctionData({
+      abi: PROOF_REGISTRY_ABI,
+      functionName: 'anchorProof',
+      args: [BigInt(bountyId), proofHash as `0x${string}`, researcherDid, signature as `0x${string}`, BigInt(nonce)]
+    });
+    const hash = await client.sendTransaction({
+      account: wallet.address as Address,
+      to: PROOF_REGISTRY_ADDRESS as Address,
+      data
+    });
+    recordBlockchainTransaction({
+      txHash: hash,
+      action: 'anchor_proof',
+      chainId: blockchainConfig.chainId,
+      contractAddress: PROOF_REGISTRY_ADDRESS,
+      submittedAt: new Date().toISOString(),
+      state: 'submitted',
+      arguments: { bountyId, proofHash, researcherDid, nonce: String(nonce) }
+    });
+    const receiptClient = createPublicClient({ chain: sepolia, transport: custom(window.ethereum!) });
+    const receipt = await receiptClient.waitForTransactionReceipt({ hash });
+    if (receipt.status !== 'success') {
+      updateBlockchainTransaction(hash, 'reverted');
+      throw new Error('Proof anchoring transaction reverted');
+    }
+    const event = receipt.logs.map((log) => {
+      try {
+        return decodeEventLog({ abi: PROOF_REGISTRY_ABI, data: log.data, topics: log.topics });
+      } catch {
+        return null;
+      }
+    }).find((decoded) => decoded?.eventName === 'ProofAnchored');
+    if (!event || event.eventName !== 'ProofAnchored') throw new Error('ProofAnchored event not found in receipt');
+    updateBlockchainTransaction(hash, 'confirmed');
+    return {
+      txHash: hash,
+      proofHash: event.args.proofHash,
+      bountyId: event.args.bountyId.toString(),
+      researcherDid: event.args.researcherDid,
+      signer: event.args.signer,
+      nonce: event.args.nonce.toString(),
+      blockNumber: receipt.blockNumber.toString()
+    };
+  };
+
+  const raiseDisputeOnChain = async (escrowId: string) => {
+    setIsPending(true);
+    if (!isValidEthAddress(blockchainConfig.trustBountyEscrowAddress)) {
+      setIsPending(false);
+      throw new Error('Invalid contract address');
+    }
+    const parsedEscrowId = BigInt(escrowId);
+    if (parsedEscrowId <= 0n) {
+      setIsPending(false);
+      throw new Error('Invalid escrow ID');
+    }
+    if (!wallet.isConnected || !wallet.address) {
+      setIsPending(false);
+      throw new Error('Wallet not connected');
+    }
+    if (!isWalletOnConfiguredChain()) {
+      setIsPending(false);
+      throw new Error('Wallet is not on the configured chain');
     }
 
-    // No fallback simulation - throw error if not connected
-    setIsPending(false);
-    throw new Error('Wallet not connected');
+    try {
+      await ensureEscrowDeployment();
+      const client = walletClient();
+      if (!client) throw new Error('Unable to initialize wallet client');
+      const data = encodeFunctionData({
+        abi: TRUST_BOUNTY_ESCROW_ABI,
+        functionName: 'raiseDispute',
+        args: [parsedEscrowId]
+      });
+      const hash = await client.sendTransaction({
+        account: wallet.address as Address,
+        to: blockchainConfig.trustBountyEscrowAddress as Address,
+        data
+      });
+      recordBlockchainTransaction({
+        txHash: hash,
+        action: 'raise_dispute',
+        chainId: blockchainConfig.chainId,
+        contractAddress: blockchainConfig.trustBountyEscrowAddress,
+        submittedAt: new Date().toISOString(),
+        state: 'submitted',
+        arguments: { escrowId }
+      });
+      const receiptClient = createPublicClient({ chain: sepolia, transport: custom(window.ethereum!) });
+      const receipt = await receiptClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== 'success') {
+        updateBlockchainTransaction(hash, 'reverted');
+        throw new Error('Dispute transaction reverted');
+      }
+      const event = receipt.logs
+        .map((log) => {
+          try {
+            return decodeEventLog({ abi: TRUST_BOUNTY_ESCROW_ABI, data: log.data, topics: log.topics });
+          } catch {
+            return null;
+          }
+        })
+        .find((decoded) => decoded?.eventName === 'EscrowDisputed');
+      if (!event || event.eventName !== 'EscrowDisputed') throw new Error('EscrowDisputed event not found in receipt');
+
+      updateBlockchainTransaction(hash, 'confirmed');
+      setIsPending(false);
+      return {
+        success: true,
+        txHash: hash,
+        escrowId: event.args.escrowId.toString(),
+        disputedBy: event.args.disputedBy,
+        blockNumber: receipt.blockNumber.toString()
+      };
+    } catch (err) {
+      setIsPending(false);
+      throw err;
+    }
   };
 
   // Helper to check if wallet is on the configured chain
@@ -440,7 +685,11 @@ export function useEscrowContract() {
     signTypedDataProof,
     releaseEscrowOnChain,
     createEscrowOnChain,
-    castJurorVoteOnChain,
+    raiseDisputeOnChain,
+    updateReputationOnChain,
+    anchorProofOnChain,
+    checkEscrowDeployment,
+    reconcilePendingTransactions,
     isWalletOnConfiguredChain,
     getWalletAddress
   };

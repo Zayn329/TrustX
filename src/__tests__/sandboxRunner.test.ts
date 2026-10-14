@@ -1,32 +1,31 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { runSandboxEvaluation } from '../../oracle/sandboxRunner';
 
-describe('sandboxRunner (Oracle Verification Engine)', () => {
-  it('executes isolated PoC verification simulation successfully', async () => {
-    const reproSteps = '1. Call deposit(100)\n2. Trigger reentrancy flaw in withdraw()';
-    const result = await runSandboxEvaluation(reproSteps);
+describe('sandboxRunner (remote technical verifier)', () => {
+  afterEach(() => vi.unstubAllGlobals());
 
-    expect(result.executionId).toMatch(/^exec-\d+$/);
-    expect(result.status).toBe('passed');
-    expect(result.vulnerabilityCategory).toBe('Reentrancy Vulnerability');
-    expect(result.coveragePercentage).toBeGreaterThan(85);
-    expect(result.logs.length).toBeGreaterThan(0);
-    expect(result.logs[0]).toContain('[ORACLE]');
+  it('fails closed when the verifier is unavailable', async () => {
+    await expect(runSandboxEvaluation('reproduction steps')).rejects.toThrow();
   });
 
-  it('detects precision loss category correctly', async () => {
-    const reproSteps = 'Precision loss in liquidity pool calculation allows token drain';
-    const result = await runSandboxEvaluation(reproSteps);
+  it('accepts only a structured remote verifier result', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      executionId: 'exec-123',
+      status: 'passed',
+      coveragePercentage: 91,
+      logs: ['remote execution complete'],
+      vulnerabilityCategory: 'Reentrancy Vulnerability',
+      executedAt: '2026-10-14T00:00:00.000Z'
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } })));
 
-    expect(result.vulnerabilityCategory).toBe('Precision Loss / Math Underflow');
+    const result = await runSandboxEvaluation('reproduction steps');
+    expect(result.executionMode).toBe('remote_oracle');
+    expect(result.executionId).toBe('exec-123');
     expect(result.status).toBe('passed');
   });
 
-  it('handles explicit fail payloads gracefully with failed status', async () => {
-    const reproSteps = 'invalid malicious exploit script';
-    const result = await runSandboxEvaluation(reproSteps);
-
-    expect(result.status).toBe('failed');
-    expect(result.logs[result.logs.length - 1]).toContain('FAILED');
+  it('rejects an unavailable verifier instead of fabricating a result', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 503 })));
+    await expect(runSandboxEvaluation('reproduction steps')).rejects.toThrow(/HTTP 503/);
   });
 });

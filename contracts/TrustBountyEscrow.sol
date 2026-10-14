@@ -45,8 +45,10 @@ contract TrustBountyEscrow {
 
     function releaseEscrow(uint256 escrowId, address payable researcher) external {
         Escrow storage escrow = escrows[escrowId];
+        require(escrow.id != 0, "Escrow does not exist");
         require(msg.sender == escrow.companyAddress, "Only company can release escrow");
         require(escrow.status == EscrowStatus.Funded || escrow.status == EscrowStatus.Locked, "Invalid escrow status");
+        require(researcher != address(0), "Invalid researcher address");
 
         escrow.researcherAddress = researcher;
         escrow.status = EscrowStatus.Released;
@@ -59,6 +61,7 @@ contract TrustBountyEscrow {
 
     function raiseDispute(uint256 escrowId) external {
         Escrow storage escrow = escrows[escrowId];
+        require(escrow.id != 0, "Escrow does not exist");
         require(escrow.status == EscrowStatus.Funded || escrow.status == EscrowStatus.Locked, "Cannot dispute");
 
         escrow.status = EscrowStatus.Disputed;

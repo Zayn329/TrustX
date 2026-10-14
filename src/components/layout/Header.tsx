@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Cpu, KeyRound, Wallet, Search, UserCheck, ChevronDown } from 'lucide-react';
+import { ShieldCheck, KeyRound, Wallet, Search, UserCheck, ChevronDown } from 'lucide-react';
 import { useTrust } from '../../store/TrustContext';
 import { WalletModal } from '../blockchain/WalletModal';
 
@@ -65,9 +65,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenCommandPalette }) => {
             </button>
 
             <div className="hidden xl:flex items-center space-x-2 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/60 text-xs text-slate-200">
-              <Cpu className="w-4 h-4 text-cyan-300" />
-              <span className="text-slate-400">Ledger:</span>
-              <span className="font-mono text-cyan-300 font-bold text-xs">Block #18,420,105</span>
+              <span className="text-slate-400">Network:</span>
+              <span className="font-mono text-cyan-300 font-bold text-xs">Sepolia Testnet</span>
             </div>
 
             {/* Interactive Profile Dropdown (Issue 4, 5, 6) */}

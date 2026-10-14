@@ -9,15 +9,14 @@ describe('useArbitrationStore', () => {
     expect(result.current.cases[0].disputeId).toBe('disp-01');
   });
 
-  it('increments vote count when casting juror vote', () => {
+  it('does not mutate votes when a real Sepolia transaction cannot be submitted', async () => {
     const { result } = renderHook(() => useArbitrationStore());
 
-    act(() => {
-      result.current.castJurorVote('disp-01', 'Researcher');
+    await act(async () => {
+      await expect(result.current.castJurorVote('disp-01', 'Researcher')).rejects.toThrow();
     });
 
-    expect(result.current.cases[0].votesResearcher).toBe(3);
-    expect(result.current.cases[0].isResolved).toBe(true);
-    expect(result.current.cases[0].ruling).toBe('ResearcherWins');
+    expect(result.current.cases[0].votesResearcher).toBe(2);
+    expect(result.current.cases[0].isResolved).toBe(false);
   });
 });

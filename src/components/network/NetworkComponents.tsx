@@ -74,9 +74,20 @@ export const LedgerExplorer: React.FC<{ events: BlockchainEvent[] }> = ({ events
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60 text-slate-300 font-mono text-[11px]">
-            {paginatedEvents.map(evt => (
+            {paginatedEvents.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-10 text-center font-sans text-xs text-slate-500">
+                  No live Sepolia events available.
+                </td>
+              </tr>
+            ) : paginatedEvents.map(evt => (
               <tr key={evt.id} className="hover:bg-slate-800/40 transition-colors">
-                <td className="py-2.5 px-3 font-sans font-bold text-indigo-400">{evt.eventType}</td>
+                <td className="py-2.5 px-3 font-sans font-bold text-indigo-400">
+                  <div>{evt.eventType}</div>
+                  <div className={`text-[9px] font-normal ${evt.source === 'seeded_demo' || !evt.source ? 'text-amber-400' : 'text-emerald-400'}`}>
+                    {evt.source === 'receipt' ? 'Sepolia receipt' : evt.source === 'rpc_log' ? 'Sepolia log' : evt.source === 'indexer' ? 'Sepolia indexer' : 'Seeded demo'}
+                  </div>
+                </td>
                 <td className="py-2.5 px-3 text-slate-400">{evt.txHash.slice(0, 14)}...</td>
                 <td className="py-2.5 px-3 text-emerald-400">#{evt.blockNumber}</td>
                 <td className="py-2.5 px-3 text-slate-300">{evt.actor.slice(0, 16)}...</td>

@@ -91,7 +91,7 @@ Traditional vulnerability management platforms (HackerOne, Bugcrowd) rely on cen
 │ - TrustBountyEscrow.sol       │  │ - The Graph Studio Endpoint   │  │ - didResolver.ts (JWK Documents)    │
 │ - ReputationRegistry.sol      │  │ - schema.graphql              │  │ - vcManager.ts (JWS Proofs & QR)    │
 │ - DisputeArbitration.sol      │  │ - useIndexedLedger.ts         │  └─────────────────────────────────────┘
-│ - ChainlinkOracleBridge.sol   │  └───────────────────────────────┘
+│ - ProofRegistry.sol           │  └───────────────────────────────┘
 └───────────────┬───────────────┘
                 │
                 ▼
@@ -117,8 +117,8 @@ The protocol distinguishes between **Cryptographic Provenance** and **Technical 
 
 2. **Technical Vulnerability Verification (Post-Submission)**:
    - Security reviewers and AI/ML static analyzers execute the reproduction steps in an isolated Foundry/Docker sandbox container (`oracle/sandboxRunner.ts`).
-   - Once verified, the company triggers the smart contract escrow release (`releaseBounty()`).
-   - The contract updates the on-chain `ReputationRegistry.sol` and issues a W3C Verifiable Credential.
+   - Once verified, the funding company explicitly triggers the receipt-confirmed escrow release.
+   - The approving wallet submits the receipt-confirmed `ReputationRegistry` update; credential issuance remains a separate application layer.
 
 ---
 
@@ -193,9 +193,9 @@ The protocol consists of 4 Solidity 0.8.20 contracts (`contracts/`):
 ### 1. `TrustBountyEscrow.sol`
 * **Purpose**: Manages conditional bounty deposits, timelocks, and payouts.
 * **Functions**:
-  - `createBounty(string bountyId)`: Deposits ETH/ERC-20 funds into escrow.
-  - `releaseBounty(string bountyId, address researcher)`: Releases locked funds to researcher upon verified report.
-  - `lockForDispute(string bountyId)`: Locks escrow funds when a report is disputed.
+  - `createEscrow(uint256 bountyId)`: Deposits native Sepolia ETH into escrow.
+  - `releaseEscrow(uint256 escrowId, address researcher)`: Company-authorized payout to the researcher.
+  - `raiseDispute(uint256 escrowId)`: Records the escrow dispute before an arbitration case is created.
 
 ### 2. `ReputationRegistry.sol`
 * **Purpose**: On-chain registry mapping researcher DIDs to trust scores.
@@ -210,8 +210,9 @@ The protocol consists of 4 Solidity 0.8.20 contracts (`contracts/`):
 * **Functions**:
   - `castVote(uint256 disputeId, Ruling vote)`: Records juror vote and triggers auto-resolution upon 3-vote quorum (`ResearcherWins` vs `CompanyWins`).
 
-### 4. `ChainlinkOracleBridge.sol`
-* **Purpose**: Callback bridge receiving automated test execution results from Chainlink oracle nodes.
+### 4. `ProofRegistry.sol`
+* **Purpose**: Stores evidence hashes and verifies the researcher’s EIP-712 signature on-chain.
+* **Security**: The signer recovered from the typed-data signature must match the transaction sender, and each proof hash can be anchored only once.
 
 ---
 
@@ -287,7 +288,7 @@ To deploy **Trust Engine** to a live Ethereum testnet/mainnet environment, execu
 1. Populate `DEPLOYER_PRIVATE_KEY` and `ETHERSCAN_API_KEY` in `.env`.
 2. Run deployment script:
    ```bash
-   npx hardhat run scripts/deploy.ts --network sepolia
+   npm run contracts:deploy:sepolia
    ```
 3. Copy deployed contract addresses into `.env` (`VITE_TRUST_BOUNTY_ESCROW_ADDRESS`, etc.).
 
@@ -323,10 +324,10 @@ VITE_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_ALCHEMY_KEY
 VITE_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id_here
 
 # 2. DEPLOYED SMART CONTRACT ADDRESSES
-VITE_TRUST_BOUNTY_ESCROW_ADDRESS=0x1111111111111111111111111111111111111111
-VITE_REPUTATION_REGISTRY_ADDRESS=0x2222222222222222222222222222222222222222
-VITE_DISPUTE_ARBITRATION_ADDRESS=0x3333333333333333333333333333333333333333
-VITE_CHAINLINK_ORACLE_BRIDGE_ADDRESS=0x4444444444444444444444444444444444444444
+VITE_TRUST_BOUNTY_ESCROW_ADDRESS=0x<verified-sepolia-address>
+VITE_REPUTATION_REGISTRY_ADDRESS=0x<verified-sepolia-address>
+VITE_DISPUTE_ARBITRATION_ADDRESS=0x<verified-sepolia-address>
+VITE_PROOF_REGISTRY_ADDRESS=0x<verified-sepolia-address>
 
 # 3. DECENTRALIZED STORAGE & IPFS PINNING (PINATA)
 VITE_PINATA_JWT=your_pinata_jwt_bearer_token_here
@@ -377,15 +378,16 @@ npm test
 
 ```
 .
-├── contracts/                  # Solidity 0.8.20 Smart Contracts
+├── contracts/                  # Solidity 0.8.26 Smart Contracts
 │   ├── TrustBountyEscrow.sol
 │   ├── ReputationRegistry.sol
 │   ├── DisputeArbitration.sol
-│   └── ChainlinkOracleBridge.sol
+│   └── ProofRegistry.sol
 ├── oracle/                     # PoC Sandbox Verification Microservice
 │   └── sandboxRunner.ts
 ├── scripts/                    # Deployment Scripts
-│   └── deploy.ts
+│   ├── deploy.ts                # fail-closed deployment guards
+│   └── deploy-sepolia.cjs       # authoritative Sepolia deployment runner
 ├── subgraph/                   # The Graph Studio Indexer Schema
 │   └── schema.graphql
 ├── src/

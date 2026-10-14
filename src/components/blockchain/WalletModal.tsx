@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Wallet, X, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { useEscrowContract } from '../../blockchain/useEscrowContract';
 
@@ -8,7 +8,29 @@ interface WalletModalProps {
 }
 
 export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
-  const { wallet, isPending, connectWallet, disconnectWallet } = useEscrowContract();
+  const { wallet, isPending, connectWallet, disconnectWallet, checkEscrowDeployment, reconcilePendingTransactions } = useEscrowContract();
+  const [deploymentStatus, setDeploymentStatus] = useState<'checking' | 'ready' | 'missing' | 'error'>('checking');
+
+  useEffect(() => {
+    if (!wallet.isConnected) {
+      setDeploymentStatus('checking');
+      return;
+    }
+    let active = true;
+    checkEscrowDeployment()
+      .then((status) => {
+        if (active) setDeploymentStatus(status.hasBytecode ? 'ready' : 'missing');
+      })
+      .catch(() => {
+        if (active) setDeploymentStatus('error');
+      });
+    reconcilePendingTransactions().catch(() => {
+      // A reconciliation read failure leaves the journal entry pending.
+    });
+    return () => {
+      active = false;
+    };
+  }, [wallet.isConnected]);
 
   // Escape key handler (Issue 26)
   useEffect(() => {
@@ -63,6 +85,14 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
             <div className="flex justify-between text-xs pt-1">
               <span className="text-slate-400">Sepolia Balance:</span>
               <span className="font-bold text-indigo-400">{wallet.balance}</span>
+            </div>
+            <div className="flex justify-between text-xs pt-1">
+              <span className="text-slate-400">Escrow Contract:</span>
+              <span className={deploymentStatus === 'ready' ? 'text-emerald-400' : 'text-amber-400'}>
+                {deploymentStatus === 'checking' ? 'Checking...' :
+                  deploymentStatus === 'ready' ? 'Verified on Sepolia' :
+                    deploymentStatus === 'missing' ? 'Not deployed' : 'Unavailable'}
+              </span>
             </div>
             <button
               onClick={disconnectWallet}

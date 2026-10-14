@@ -7,6 +7,7 @@ pragma solidity ^0.8.20;
  */
 contract ReputationRegistry {
     address public owner;
+    address public verifier;
 
     struct ReputationRecord {
         string did;
@@ -16,18 +17,30 @@ contract ReputationRegistry {
 
     mapping(string => ReputationRecord) public records;
 
-    event ReputationUpdated(string indexed did, uint256 newScore, uint256 increment);
+    event ReputationUpdated(string did, uint256 newScore, uint256 increment);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "ReputationRegistry: caller is not the owner");
         _;
     }
 
-    constructor() {
-        owner = msg.sender;
+    modifier onlyAuthorizedWriter() {
+        require(msg.sender == owner || msg.sender == verifier, "ReputationRegistry: caller is not authorized");
+        _;
     }
 
-    function updateReputation(string calldata did, uint256 increment) external onlyOwner {
+    constructor(address initialVerifier) {
+        owner = msg.sender;
+        require(initialVerifier != address(0), "ReputationRegistry: invalid verifier");
+        verifier = initialVerifier;
+    }
+
+    function setVerifier(address nextVerifier) external onlyOwner {
+        require(nextVerifier != address(0), "ReputationRegistry: invalid verifier");
+        verifier = nextVerifier;
+    }
+
+    function updateReputation(string calldata did, uint256 increment) external onlyAuthorizedWriter {
         ReputationRecord storage record = records[did];
         if (bytes(record.did).length == 0) {
             record.did = did;
