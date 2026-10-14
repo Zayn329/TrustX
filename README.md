@@ -312,8 +312,8 @@ To deploy **Trust Engine** to a live Ethereum testnet/mainnet environment, execu
 ### Step 4: Host Oracle Sandbox Worker
 1. Start the verifier gateway locally with `npm run oracle:server`, or deploy `oracle/server.cjs` with its child `oracle/worker.cjs` in an isolated worker environment. For Docker execution, build `oracle/Dockerfile` as `trustx-oracle-worker:local` and set `ORACLE_WORKER_MODE=docker`.
 2. Set `VITE_ORACLE_SERVICE_URL` in `.env` to the gateway URL.
-3. Configure a stable Ed25519 signing key on the server with `ORACLE_SIGNING_PRIVATE_KEY_PEM` and pin its SPKI public key in `VITE_ORACLE_SIGNING_PUBLIC_KEY`.
-4. Use `npm run oracle:check` to verify the signed execution, idempotency, and unsafe-input rejection path.
+3. Run `npm run oracle:keys` once to generate a stable Ed25519 signing key pair. Keep `ORACLE_SIGNING_PRIVATE_KEY_PEM` server-side and pin the printed SPKI public key in `VITE_ORACLE_SIGNING_PUBLIC_KEY`.
+4. Use `npm run oracle:check` to verify the signed execution, request-token authentication, idempotency, and unsafe-input rejection path.
 
 The verifier accepts only the restricted declarative demo format (`CALL deposit(...)`, `CALL flashLoan(...)`, and `CALL settlement(...)`). It executes the target fixture in a separate child process, returns measured fixture coverage, binds the response to the report/evidence hash, and signs the result. A `passed` result is technical evidence only; reputation and company-authorized escrow release remain separate operations.
 
