@@ -8,7 +8,7 @@ export interface WagmiChainConfig {
 export const SEPOLIA_CONFIG: WagmiChainConfig = {
   chainId: 11155111,
   chainName: 'Ethereum Sepolia Testnet',
-  rpcUrl: 'https://rpc.sepolia.org',
+  rpcUrl: import.meta.env.VITE_RPC_URL,
   blockExplorerUrl: 'https://sepolia.etherscan.io'
 };
 

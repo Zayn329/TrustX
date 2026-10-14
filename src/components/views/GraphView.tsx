@@ -22,7 +22,7 @@ export const GraphView: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
 
-  // Category H Item 77: Filter Toggles
+  // Filter Toggles
   const [visibleTypes, setVisibleTypes] = useState<Record<string, boolean>>({
     identity: true,
     bounty: true,
@@ -52,58 +52,107 @@ export const GraphView: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const nodes: Node[] = [
-    {
-      id: identities[0]?.id || 'id-1',
-      label: identities[0]?.name || 'Alex Rivera',
+  // Dynamic Graph Nodes derived directly from Trust Layer state
+  const nodes: Node[] = [];
+
+  identities.forEach((id, idx) => {
+    nodes.push({
+      id: id.id,
+      label: id.name || id.handle,
       type: 'identity',
-      x: 120,
-      y: 180,
-      details: `DID: ${identities[0]?.id} • Trust Score: ${identities[0]?.trustScore}`
-    },
-    {
-      id: bounties[0]?.id || 'bounty-1',
-      label: bounties[0]?.title.slice(0, 24) + '...' || 'Nexus Bounty',
+      x: 90,
+      y: 90 + idx * 110,
+      details: `DID: ${id.id} • Trust Score: ${id.trustScore}/100 • Verified Claims: ${id.verifiedContributionsCount} • Earned: $${id.totalRewardsEarned}`
+    });
+  });
+
+  bounties.forEach((b, idx) => {
+    nodes.push({
+      id: b.id,
+      label: b.title.length > 20 ? b.title.slice(0, 18) + '...' : b.title,
       type: 'bounty',
-      x: 360,
-      y: 100,
-      details: `Bounty ID: ${bounties[0]?.id} • Reward: $${bounties[0]?.rewardAmount} USDC`
-    },
-    {
-      id: escrows[0]?.id || 'escrow-1',
-      label: `Escrow ($${escrows[0]?.amount})`,
-      type: 'escrow',
-      x: 600,
-      y: 100,
-      details: `Escrow Contract: ${escrows[0]?.escrowContractAddress} • Status: ${escrows[0]?.status}`
-    },
-    {
-      id: reports[0]?.id || 'rep-1',
-      label: reports[0]?.title.slice(0, 22) + '...' || 'Vulnerability Report',
+      x: 270,
+      y: 80 + idx * 110,
+      details: `Bounty ID: ${b.id} • Reward: $${b.rewardAmount} ${b.rewardCurrency} • Severity: ${b.severity} • Org: ${b.organizationName}`
+    });
+  });
+
+  reports.forEach((r, idx) => {
+    nodes.push({
+      id: r.id,
+      label: r.title.length > 18 ? r.title.slice(0, 16) + '...' : r.title,
       type: 'contribution',
-      x: 360,
-      y: 260,
-      details: `Report ID: ${reports[0]?.id} • Severity: ${reports[0]?.severity}`
-    },
-    {
-      id: proofs[0]?.id || 'proof-1',
-      label: 'SHA-256 Proof Anchor',
+      x: 450,
+      y: 70 + idx * 85,
+      details: `Report ID: ${r.id} • Type: ${r.vulnerabilityType} • Severity: ${r.severity} • Researcher: ${r.researcherId}`
+    });
+  });
+
+  proofs.forEach((p, idx) => {
+    nodes.push({
+      id: p.id,
+      label: `Proof ${p.contentHash.slice(0, 6)}...`,
       type: 'proof',
-      x: 600,
-      y: 260,
-      details: `Content Hash: ${proofs[0]?.contentHash.slice(0, 20)}...`
-    }
-  ];
+      x: 630,
+      y: 70 + idx * 85,
+      details: `Proof ID: ${p.id} • SHA-256 Hash: ${p.contentHash} • Status: ${p.proofStatus} • Signature: ${p.signature.slice(0, 24)}...`
+    });
+  });
+
+  escrows.forEach((e, idx) => {
+    nodes.push({
+      id: e.id,
+      label: `Escrow ($${e.amount})`,
+      type: 'escrow',
+      x: 810,
+      y: 90 + idx * 110,
+      details: `Escrow ID: ${e.id} • Contract: ${e.escrowContractAddress} • Amount: $${e.amount} ${e.currency} • Status: ${e.status}`
+    });
+  });
 
   const filteredNodes = nodes.filter(n => visibleTypes[n.type]);
 
-  const edges: Edge[] = [
-    { source: nodes[0].id, target: nodes[3].id, label: 'Submitted' },
-    { source: nodes[1].id, target: nodes[2].id, label: 'Locked Funds' },
-    { source: nodes[1].id, target: nodes[3].id, label: 'Target Scope' },
-    { source: nodes[3].id, target: nodes[4].id, label: 'Hashed Evidence' },
-    { source: nodes[4].id, target: nodes[2].id, label: 'Triggers Release' }
-  ];
+  // Dynamic Graph Edges calculated from state foreign relationships
+  const edges: Edge[] = [];
+
+  // Identity -> Report (Submitted)
+  reports.forEach(r => {
+    if (nodes.some(n => n.id === r.researcherId)) {
+      edges.push({ source: r.researcherId, target: r.id, label: 'Submitted' });
+    }
+  });
+
+  // Bounty -> Escrow (Locked Funds)
+  bounties.forEach(b => {
+    if (b.escrowId && nodes.some(n => n.id === b.escrowId)) {
+      edges.push({ source: b.id, target: b.escrowId, label: 'Locked Funds' });
+    }
+  });
+
+  // Bounty -> Report (Target Scope)
+  reports.forEach(r => {
+    if (nodes.some(n => n.id === r.bountyId)) {
+      edges.push({ source: r.bountyId, target: r.id, label: 'Target Scope' });
+    }
+  });
+
+  // Report -> Proof (Hashed Evidence)
+  proofs.forEach(p => {
+    if (nodes.some(n => n.id === p.contributionId)) {
+      edges.push({ source: p.contributionId, target: p.id, label: 'SHA-256 Anchor' });
+    }
+  });
+
+  // Proof -> Escrow (Triggers Payout)
+  proofs.forEach(p => {
+    const report = reports.find(r => r.id === p.contributionId);
+    if (report) {
+      const bounty = bounties.find(b => b.id === report.bountyId);
+      if (bounty && bounty.escrowId && nodes.some(n => n.id === bounty.escrowId)) {
+        edges.push({ source: p.id, target: bounty.escrowId, label: 'Triggers Payout' });
+      }
+    }
+  });
 
   const getNodeColor = (type: Node['type']) => {
     switch (type) {
@@ -136,11 +185,11 @@ export const GraphView: React.FC = () => {
             <h1 className="tx-page-title">Trust graph</h1>
           </div>
           <p className="text-sm text-slate-400 mt-3 max-w-2xl leading-6">
-            See why a researcher has earned trust by following the relationship between identity, contribution, proof, verification, and escrow.
+            Interactive, real-time visual graph displaying dynamic relationships between Identities, Bounties, Reports, SHA-256 Proofs, and Smart Contract Escrows.
           </p>
         </div>
 
-        {/* Zoom & Export Controls (Category H Items 73, 80) */}
+        {/* Zoom & Export Controls */}
         <div className="flex items-center gap-2 bg-slate-900/70 p-1.5 rounded-xl border border-slate-700/50 text-xs">
           <button
             onClick={handleExportSVG}
@@ -180,7 +229,7 @@ export const GraphView: React.FC = () => {
         </div>
       </div>
 
-      {/* Graph Filters & Legend (Category H Items 77, 79) */}
+      {/* Graph Filters & Legend */}
       <div className="tx-surface rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2 text-slate-400 font-semibold">
           <Filter className="w-4 h-4 text-blue-300" />
@@ -212,11 +261,11 @@ export const GraphView: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-3 tx-surface rounded-[1.75rem] p-4 relative overflow-hidden flex flex-col items-center justify-center min-h-[420px] shadow-sm">
+        <div className="lg:col-span-3 tx-surface rounded-[1.75rem] p-4 relative overflow-hidden flex flex-col items-center justify-center min-h-[460px] shadow-sm">
           <svg
             id="trust-graph-svg"
-            viewBox="0 0 720 360"
-            className="w-full h-full max-h-[420px] transition-transform duration-300"
+            viewBox="0 0 900 440"
+            className="w-full h-full max-h-[460px] transition-transform duration-300"
             style={{ transform: `scale(${zoomLevel})` }}
           >
             {edges.map((edge, idx) => {
@@ -235,15 +284,15 @@ export const GraphView: React.FC = () => {
                     x2={targetNode.x}
                     y2={targetNode.y}
                     stroke="#475569"
-                    strokeWidth="2.5"
+                    strokeWidth="2"
                     strokeDasharray="4 4"
                   />
                   <rect
-                    x={midX - 45}
-                    y={midY - 11}
-                    width="90"
-                    height="22"
-                    rx="6"
+                    x={midX - 42}
+                    y={midY - 10}
+                    width="84"
+                    height="20"
+                    rx="5"
                     fill="#020617"
                     stroke="#334155"
                     strokeWidth="1.5"
@@ -253,7 +302,7 @@ export const GraphView: React.FC = () => {
                     y={midY + 3}
                     textAnchor="middle"
                     fill="#e2e8f0"
-                    fontSize="10"
+                    fontSize="9"
                     fontWeight="700"
                     fontFamily="monospace"
                   >
@@ -276,7 +325,7 @@ export const GraphView: React.FC = () => {
                   <circle
                     cx={node.x}
                     cy={node.y}
-                    r={isSelected ? "28" : "22"}
+                    r={isSelected ? "26" : "20"}
                     fill="#0f172a"
                     stroke={color}
                     strokeWidth={isSelected ? "4" : "2.5"}
@@ -284,10 +333,10 @@ export const GraphView: React.FC = () => {
                   />
                   <text
                     x={node.x}
-                    y={node.y + 38}
+                    y={node.y + 34}
                     textAnchor="middle"
                     fill="#f8fafc"
-                    fontSize="11"
+                    fontSize="10"
                     fontWeight="700"
                   >
                     {node.label}
@@ -311,10 +360,10 @@ export const GraphView: React.FC = () => {
               </div>
               <div>
                 <span className="text-slate-500 block text-[10px] uppercase font-mono">Entity Type</span>
-            <span className="font-mono text-blue-300 uppercase font-bold text-xs">{selectedNode.type}</span>
+                <span className="font-mono text-blue-300 uppercase font-bold text-xs">{selectedNode.type}</span>
               </div>
               <div>
-                <span className="text-slate-500 block text-[10px] uppercase font-mono">Properties</span>
+                <span className="text-slate-500 block text-[10px] uppercase font-mono">Properties & Hashes</span>
                 <p className="text-slate-300 leading-relaxed font-mono mt-1 bg-slate-950 p-3 rounded-xl border border-slate-800 text-[11px] break-all">
                   {selectedNode.details}
                 </p>
@@ -322,7 +371,7 @@ export const GraphView: React.FC = () => {
             </div>
           ) : (
             <div className="text-center py-12 text-slate-500 text-xs">
-              <p>Click any node in the trust graph to inspect its properties and relationships.</p>
+              <p>Click any node in the trust graph to inspect its live properties, contract addresses, and cryptographic hashes.</p>
             </div>
           )}
         </div>

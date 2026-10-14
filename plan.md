@@ -1,9 +1,11 @@
 # plan.md — Production Implementation Plan & Architecture Roadmap
 
 ## Executive Overview
-The **Trust Engine** platform currently stands at **~60% to 65% completion**. All core domain logic, Web Crypto hashing, W3C DID document resolution, W3C Verifiable Credentials issuance and verification, IPFS base32 CIDv1 multihashing, Solidity smart contracts (`TrustBountyEscrow`, `ReputationRegistry`, `DisputeArbitration`), interactive SVG visualizers, and a 28-test Vitest suite are fully implemented and passing clean production TypeScript builds (`tsc && vite build`).
+The **Trust Engine** platform currently stands at **~60% to 65% completion**. All core domain logic, Web Crypto hashing, W3C DID document resolution, W3C Verifiable Credentials issuance and verification, IPFS base32 CIDv1 multihashing, Solidity smart contracts (`TrustBountyEscrow`, `ReputationRegistry`, `DisputeArbitration`), interactive SVG visualizers, and a 33-test Vitest suite are fully implemented and passing clean production TypeScript builds (`tsc && vite build`).
 
-This document outlines the **Production Implementation Plan** required to take the protocol from its current hybrid state to a live mainnet production launch.
+This document outlines the **Production Implementation Plan** required to take the protocol from its current hybrid state to a live mainnet production launch, specifically focusing on upgrading the deterministic Trust Layer parts and reactive SVG Trust Graphs into live on-chain protocols.
+
+See also: [`TRUST_LAYER_DEPENDENCY_MAP.md`](./TRUST_LAYER_DEPENDENCY_MAP.md) and [`TRUST_LAYER_REAL_IMPLEMENTATION_PLAN.md`](./TRUST_LAYER_REAL_IMPLEMENTATION_PLAN.md).
 
 ---
 
@@ -18,10 +20,11 @@ This document outlines the **Production Implementation Plan** required to take t
 | **Smart Contracts & Web3** | **65% Complete** | `contracts/*`, `src/blockchain/*` | Testnet/Mainnet deployment scripts, ERC-20 support, audit. |
 | **Oracle Sandbox Evaluation** | **65% Complete** | `oracle/sandboxRunner.ts`, `oracle/ChainlinkOracleBridge.sol` | Microservice container hosted on Fly.io / AWS ECS. |
 | **Governance & Arbitration** | **60% Complete** | `contracts/DisputeArbitration.sol`, `src/store/useArbitrationStore.ts` | Staked juror court deployment & timelock triggers. |
+| **Dynamic Trust Graph Engine** | **70% Complete** | `src/components/views/GraphView.tsx` | Auto-layout force-directed graph generated from live Graph events. |
 
 ---
 
-## Production Implementation Roadmap (Phases 9 - 14)
+## Production Implementation Roadmap (Phases 9 - 15)
 
 ### Phase 9: Persistent Decentralized Storage & Pinning Service (Pinata / Web3.Storage)
 - **Goal**: Transition client-side in-memory IPFS storage cache to global persistent pinning services with IPNS record management.
@@ -50,7 +53,17 @@ This document outlines the **Production Implementation Plan** required to take t
 - **Files to Modify**: `src/blockchain/wagmiConfig.ts`, `src/blockchain/useEscrowContract.ts`, `src/components/blockchain/WalletModal.tsx`.
 - **Verification**: Connect RainbowKit wallet on Sepolia testnet, trigger proof anchoring signature prompt, and confirm signature verification on-chain.
 
-### Phase 12: Production Cloud Oracle Microservice & Chainlink Functions
+### Phase 12: Real-Time Dynamic Trust Graph Visualizer Engine (`GraphView.tsx`)
+- **Goal**: Upgrade `GraphView.tsx` into a real-time reactive visualizer that dynamically generates graph nodes, edges, and pulse animations directly from live on-chain events.
+- **Tasks**:
+  1. Dynamically construct node structures from `identities`, `bounties`, `reports`, `proofs`, and `escrows`.
+  2. Implement an automated force-directed coordinate layout algorithm for scaling beyond static arrays.
+  3. Calculate dynamic relationship edges linking researcher DID $\rightarrow$ report payload $\rightarrow$ SHA-256 proof $\rightarrow$ escrow payout.
+  4. Add real-time SVG transaction pulse animations when new block events arrive via WebSocket stream.
+- **Files to Modify**: `src/components/views/GraphView.tsx`, `src/store/TrustContext.tsx`.
+- **Verification**: Submit a new vulnerability, verify new nodes and edges render on the SVG canvas without manual page refresh.
+
+### Phase 13: Production Cloud Oracle Microservice & Chainlink Functions
 - **Goal**: Move the JS/Regex static analyzer and Docker/Foundry runner from browser client to an isolated, sandboxed cloud microservice.
 - **Tasks**:
   1. Package `oracle/sandboxRunner.ts` into an isolated Node.js microservice running inside an ephemeral gVisor/Docker container on Fly.io or AWS ECS.
@@ -59,7 +72,7 @@ This document outlines the **Production Implementation Plan** required to take t
 - **Files to Modify**: `oracle/sandboxRunner.ts`, `oracle/ChainlinkOracleBridge.sol`, `src/components/ui/OracleVerificationBadge.tsx`.
 - **Verification**: Post proof payload, verify Chainlink oracle request emitted, execute sandbox container test, and verify automated contract payout trigger.
 
-### Phase 13: Hardhat / Foundry Deployment Scripts & Multi-Sig Governance
+### Phase 14: Hardhat / Foundry Deployment Scripts & Multi-Sig Governance
 - **Goal**: Automated contract compilation, deployment, verification, and ownership transfer to Gnosis Safe multi-sig.
 - **Tasks**:
   1. Create Hardhat / Foundry deployment scripts (`scripts/deploy.ts`).
@@ -69,7 +82,7 @@ This document outlines the **Production Implementation Plan** required to take t
 - **Files to Modify**: `contracts/TrustBountyEscrow.sol`, `contracts/ReputationRegistry.sol`, `scripts/deploy.ts`.
 - **Verification**: Run `npx hardhat run scripts/deploy.ts --network sepolia`, confirm Etherscan green checkmark verification, and test multi-sig transaction execution.
 
-### Phase 14: Security Audits, Monitoring, & Production Infrastructure
+### Phase 15: Security Audits, Monitoring, & Production Infrastructure
 - **Goal**: Ensure mainnet resilience, smart contract security, and operational monitoring.
 - **Tasks**:
   1. Undergo formal third-party smart contract security audit (OpenZeppelin / Trail of Bits).

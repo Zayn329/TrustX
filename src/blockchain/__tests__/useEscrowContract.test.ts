@@ -8,15 +8,23 @@ describe('useEscrowContract (Web3 Provider & Escrow Hook)', () => {
     expect(result.current.wallet.isConnected).toBe(false);
   });
 
-  it('connects wallet via fallback mechanism when window.ethereum is not present', async () => {
+  it('remains disconnected when window.ethereum is not present', async () => {
+    // Mock window.ethereum to be undefined to simulate no web3 provider
+    Object.defineProperty(window, 'ethereum', {
+      value: undefined,
+      configurable: true
+    });
+
     const { result } = renderHook(() => useEscrowContract());
 
     await act(async () => {
       await result.current.connectWallet();
     });
 
-    expect(result.current.wallet.isConnected).toBe(true);
-    expect(result.current.wallet.address).toMatch(/^0x[a-fA-F0-9]{40}$/);
+    expect(result.current.wallet.isConnected).toBe(false);
+
+    // Restore original value
+    delete window.ethereum;
   });
 
   it('disconnects wallet resetting state to default', async () => {
@@ -33,15 +41,11 @@ describe('useEscrowContract (Web3 Provider & Escrow Hook)', () => {
     expect(result.current.wallet.isConnected).toBe(false);
   });
 
-  it('releases escrow on-chain returning valid transaction hash', async () => {
+  it('releases escrow on-chain throwing error when wallet not connected', async () => {
     const { result } = renderHook(() => useEscrowContract());
 
-    let txRes: { success: boolean; txHash: string } | undefined;
-    await act(async () => {
-      txRes = await result.current.releaseEscrowOnChain('0x1111111111111111111111111111111111111111', 25000);
-    });
-
-    expect(txRes?.success).toBe(true);
-    expect(txRes?.txHash).toMatch(/^0x[a-f0-9]{64}$/);
+    await expect(
+      result.current.releaseEscrowOnChain('0x1111111111111111111111111111111111111111', 25000)
+    ).rejects.toThrow('Wallet not connected');
   });
 });

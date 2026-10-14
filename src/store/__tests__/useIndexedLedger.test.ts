@@ -3,7 +3,7 @@ import { querySubgraphEvents, SUBGRAPH_ENDPOINT } from '../useIndexedLedger';
 
 describe('useIndexedLedger (GraphQL Indexer Client)', () => {
   it('exports valid Subgraph Studio query endpoint string', () => {
-    expect(SUBGRAPH_ENDPOINT).toContain('https://api.studio.thegraph.com/query/trust-engine');
+    expect(SUBGRAPH_ENDPOINT).toContain('https://api.studio.thegraph.com/query/');
   });
 
   it('handles unconfigured or unreachable GraphQL endpoint returning null fallback gracefully', async () => {

@@ -40,6 +40,10 @@ export interface Bounty {
   verificationRequirements: string[];
   status: 'active' | 'in_review' | 'resolved' | 'closed';
   escrowId: string;
+  escrowStatus: 'funded' | 'locked' | 'released' | 'disputed' | '';
+  fundingTxHash: string;
+  escrowAmountEth: number;
+  escrowDemoRate: number;
   description: string;
 }
 
