@@ -14,7 +14,11 @@ const WORKER_IMAGE = process.env.ORACLE_WORKER_IMAGE || 'trustx-oracle-worker:lo
 const jobs = new Map();
 const requestTokens = new Map();
 
-const keyPair = process.env.ORACLE_SIGNING_PRIVATE_KEY_PEM
+const hasConfiguredSigningKey = Boolean(process.env.ORACLE_SIGNING_PRIVATE_KEY_PEM);
+if (process.env.NODE_ENV === 'production' && !hasConfiguredSigningKey) {
+  throw new Error('ORACLE_SIGNING_PRIVATE_KEY_PEM is required in production');
+}
+const keyPair = hasConfiguredSigningKey
   ? crypto.createPrivateKey(process.env.ORACLE_SIGNING_PRIVATE_KEY_PEM)
   : crypto.generateKeyPairSync('ed25519').privateKey;
 const publicKey = crypto.createPublicKey(keyPair);
@@ -34,9 +38,9 @@ function sendJson(response, status, body) {
   response.end(JSON.stringify(body));
 }
 
-function originAllowed(request) {
+function originAllowed(request, allowMissingOrigin = false) {
   const origin = request.headers.origin;
-  return !origin || origin === ALLOWED_ORIGIN;
+  return origin ? origin === ALLOWED_ORIGIN : allowMissingOrigin;
 }
 
 function issueRequestToken() {
@@ -52,6 +56,10 @@ function consumeRequestToken(request) {
   if (!expiresAt || expiresAt < Date.now()) return false;
   requestTokens.delete(token);
   return true;
+}
+
+function hasGatewayToken(request) {
+  return Boolean(GATEWAY_TOKEN && request.headers['x-trustx-gateway-token'] === GATEWAY_TOKEN);
 }
 
 function runWorker(payload) {
@@ -138,9 +146,15 @@ async function evaluate(body) {
 
 const server = http.createServer((request, response) => {
   if (request.method === 'OPTIONS') return sendJson(response, 204, {});
-  if (!originAllowed(request)) return sendJson(response, 403, { error: 'Origin is not allowed' });
-  if (request.method === 'GET' && request.url === '/health') return sendJson(response, 200, { status: 'ok', verifierVersion: VERIFIER_VERSION });
-  if (request.method === 'GET' && request.url === '/public-key') return sendJson(response, 200, { signingKeyId: 'default-ed25519', publicKeySpkiBase64 });
+  if (request.method === 'GET' && request.url === '/health') {
+    if (!originAllowed(request, true)) return sendJson(response, 403, { error: 'Origin is not allowed' });
+    return sendJson(response, 200, { status: 'ok', verifierVersion: VERIFIER_VERSION });
+  }
+  if (request.method === 'GET' && request.url === '/public-key') {
+    if (!originAllowed(request, true)) return sendJson(response, 403, { error: 'Origin is not allowed' });
+    return sendJson(response, 200, { signingKeyId: 'default-ed25519', publicKeySpkiBase64 });
+  }
+  if (!originAllowed(request) && !hasGatewayToken(request)) return sendJson(response, 403, { error: 'Origin is not allowed' });
   if (request.method === 'GET' && request.url === '/session') return sendJson(response, 200, { requestToken: issueRequestToken(), expiresInSeconds: 60 });
   if (request.method !== 'POST' || request.url !== '/evaluate') return sendJson(response, 404, { error: 'Not found' });
   if (!consumeRequestToken(request)) return sendJson(response, 401, { error: 'A short-lived verifier request token is required' });

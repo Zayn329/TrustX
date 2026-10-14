@@ -25,6 +25,8 @@ async function waitForHealth() {
 
 async function main() {
   await waitForHealth();
+  const directSessionResponse = await fetch(`http://localhost:${port}/session`);
+  if (directSessionResponse.status !== 403) throw new Error('Session issuance allowed without an approved origin');
   const sessionResponse = await fetch(`http://localhost:${port}/session`, { headers: { Origin: 'http://localhost:5173' } });
   const session = await sessionResponse.json();
   if (!session.requestToken) throw new Error('Oracle session token was not issued');
