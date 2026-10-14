@@ -81,9 +81,15 @@ export async function runSandboxEvaluation(input: string | SandboxEvaluationRequ
   if (!oracleUrl) throw new Error('Technical verifier is not configured');
   if (!/^0x[0-9a-f]{64}$/i.test(evidenceHash)) throw new Error('Technical verifier evidence hash is invalid');
 
-  const response = await fetch(`${oracleUrl.replace(/\/$/, '')}/evaluate`, {
+  const serviceUrl = oracleUrl.replace(/\/$/, '');
+  const sessionResponse = await fetch(`${serviceUrl}/session`, { signal: AbortSignal.timeout(2000) });
+  if (!sessionResponse.ok) throw new Error(`Technical verifier session failed HTTP ${sessionResponse.status}`);
+  const session = await sessionResponse.json() as { requestToken?: string };
+  if (typeof session.requestToken !== 'string' || session.requestToken.length < 16) throw new Error('Technical verifier session token is invalid');
+
+  const response = await fetch(`${serviceUrl}/evaluate`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-TrustX-Request-Token': session.requestToken },
     body: JSON.stringify({ reportId, reproductionSteps: request.reproductionSteps, evidenceHash, idempotencyKey }),
     signal: AbortSignal.timeout(6000)
   });

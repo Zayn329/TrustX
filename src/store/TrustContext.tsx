@@ -257,6 +257,9 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       reproductionSteps: report.reproductionSteps,
       evidenceHash: reportProof?.contentHash
     });
+    if (technicalResult.status === 'unavailable') {
+      throw new Error('Technical verifier is unavailable; submission remains unverified');
+    }
     const technicallyApproved = technicalResult.status === 'passed';
     if (technicallyApproved !== isApproved) {
       throw new Error(`Verifier result is ${technicalResult.status}; manual decision does not match technical evidence`);

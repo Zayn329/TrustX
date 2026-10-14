@@ -25,6 +25,9 @@ async function waitForHealth() {
 
 async function main() {
   await waitForHealth();
+  const sessionResponse = await fetch(`http://localhost:${port}/session`, { headers: { Origin: 'http://localhost:5173' } });
+  const session = await sessionResponse.json();
+  if (!session.requestToken) throw new Error('Oracle session token was not issued');
   const request = {
     reportId: 'rep-check',
     reproductionSteps: 'CALL deposit(1000)\nCALL flashLoan(1e18)\nCALL settlement(before_state_update)',
@@ -33,7 +36,7 @@ async function main() {
   };
   const firstResponse = await fetch(`http://localhost:${port}/evaluate`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:5173' },
+    headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:5173', 'X-TrustX-Request-Token': session.requestToken },
     body: JSON.stringify(request)
   });
   if (!firstResponse.ok) throw new Error(`Expected evaluation success, got ${firstResponse.status}`);
@@ -45,12 +48,21 @@ async function main() {
     headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:5173' },
     body: JSON.stringify(request)
   });
-  const second = await secondResponse.json();
-  if (second.executionId !== first.executionId) throw new Error('Idempotency did not reuse execution result');
+  if (secondResponse.status !== 401) throw new Error('Evaluation without a request token was accepted');
+
+  const replaySessionResponse = await fetch(`http://localhost:${port}/session`, { headers: { Origin: 'http://localhost:5173' } });
+  const replaySession = await replaySessionResponse.json();
+  const replayResponse = await fetch(`http://localhost:${port}/evaluate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:5173', 'X-TrustX-Request-Token': replaySession.requestToken },
+    body: JSON.stringify(request)
+  });
+  const replay = await replayResponse.json();
+  if (replay.executionId !== first.executionId) throw new Error('Idempotency did not reuse execution result');
 
   const rejectedResponse = await fetch(`http://localhost:${port}/evaluate`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:5173' },
+    headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:5173', 'X-TrustX-Request-Token': (await (await fetch(`http://localhost:${port}/session`, { headers: { Origin: 'http://localhost:5173' } })).json()).requestToken },
     body: JSON.stringify({ ...request, idempotencyKey: sha256('rejected'), reproductionSteps: 'rm -rf /' })
   });
   const rejected = await rejectedResponse.json();

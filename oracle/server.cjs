@@ -12,6 +12,7 @@ const GATEWAY_TOKEN = process.env.ORACLE_GATEWAY_TOKEN || '';
 const WORKER_MODE = process.env.ORACLE_WORKER_MODE || 'process';
 const WORKER_IMAGE = process.env.ORACLE_WORKER_IMAGE || 'trustx-oracle-worker:local';
 const jobs = new Map();
+const requestTokens = new Map();
 
 const keyPair = process.env.ORACLE_SIGNING_PRIVATE_KEY_PEM
   ? crypto.createPrivateKey(process.env.ORACLE_SIGNING_PRIVATE_KEY_PEM)
@@ -27,16 +28,30 @@ function sendJson(response, status, body) {
   response.writeHead(status, {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-    'Access-Control-Allow-Headers': 'content-type, x-trustx-gateway-token',
+    'Access-Control-Allow-Headers': 'content-type, x-trustx-gateway-token, x-trustx-request-token',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
   });
   response.end(JSON.stringify(body));
 }
 
-function authorized(request) {
-  if (GATEWAY_TOKEN && request.headers['x-trustx-gateway-token'] !== GATEWAY_TOKEN) return false;
+function originAllowed(request) {
   const origin = request.headers.origin;
   return !origin || origin === ALLOWED_ORIGIN;
+}
+
+function issueRequestToken() {
+  const token = crypto.randomBytes(32).toString('base64url');
+  requestTokens.set(token, Date.now() + 60_000);
+  return token;
+}
+
+function consumeRequestToken(request) {
+  if (GATEWAY_TOKEN && request.headers['x-trustx-gateway-token'] === GATEWAY_TOKEN) return true;
+  const token = request.headers['x-trustx-request-token'];
+  const expiresAt = token ? requestTokens.get(token) : undefined;
+  if (!expiresAt || expiresAt < Date.now()) return false;
+  requestTokens.delete(token);
+  return true;
 }
 
 function runWorker(payload) {
@@ -123,10 +138,12 @@ async function evaluate(body) {
 
 const server = http.createServer((request, response) => {
   if (request.method === 'OPTIONS') return sendJson(response, 204, {});
-  if (!authorized(request)) return sendJson(response, 401, { error: 'Unauthorized verifier request' });
+  if (!originAllowed(request)) return sendJson(response, 403, { error: 'Origin is not allowed' });
   if (request.method === 'GET' && request.url === '/health') return sendJson(response, 200, { status: 'ok', verifierVersion: VERIFIER_VERSION });
   if (request.method === 'GET' && request.url === '/public-key') return sendJson(response, 200, { signingKeyId: 'default-ed25519', publicKeySpkiBase64 });
+  if (request.method === 'GET' && request.url === '/session') return sendJson(response, 200, { requestToken: issueRequestToken(), expiresInSeconds: 60 });
   if (request.method !== 'POST' || request.url !== '/evaluate') return sendJson(response, 404, { error: 'Not found' });
+  if (!consumeRequestToken(request)) return sendJson(response, 401, { error: 'A short-lived verifier request token is required' });
 
   let body = '';
   request.on('data', (chunk) => {

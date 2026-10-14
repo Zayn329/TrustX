@@ -26,7 +26,9 @@ describe('sandboxRunner (remote technical verifier)', () => {
     }));
     vi.spyOn(crypto.subtle, 'importKey').mockResolvedValue({} as CryptoKey);
     vi.spyOn(crypto.subtle, 'verify').mockResolvedValue(true);
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ requestToken: 'request-token-123456789' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
       executionId: 'exec-123',
       reportId,
       requestHash,
@@ -42,7 +44,7 @@ describe('sandboxRunner (remote technical verifier)', () => {
       signingKeyId: 'default-ed25519',
       signature: 'AA==',
       publicKeySpkiBase64: 'AA=='
-    }), { status: 200, headers: { 'Content-Type': 'application/json' } })));
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })));
 
     const result = await runSandboxEvaluation({ reportId, reproductionSteps, evidenceHash, idempotencyKey });
     expect(result.executionMode).toBe('isolated_remote_oracle');
@@ -52,18 +54,20 @@ describe('sandboxRunner (remote technical verifier)', () => {
 
   it('rejects an unavailable verifier instead of fabricating a result', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 503 })));
-    await expect(runSandboxEvaluation('reproduction steps')).rejects.toThrow(/HTTP 503/);
+    await expect(runSandboxEvaluation('reproduction steps')).rejects.toThrow(/session failed HTTP 503/);
   });
 
   it('rejects a result bound to different evidence', async () => {
     const evidenceHash = `0x${'a'.repeat(64)}`;
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ requestToken: 'request-token-123456789' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
       executionId: 'exec-tampered', reportId: 'rep-other', requestHash: '0xwrong', evidenceHash,
       status: 'passed', coveragePercentage: 100, logs: [], vulnerabilityCategory: 'Tampered',
       executedAt: '2026-10-14T00:00:00.000Z', verifierVersion: 'trustx-verifier-1',
       targetVersion: 'trustx-settlement-v1', executionMode: 'isolated_remote_oracle',
       signingKeyId: 'default-ed25519', signature: 'AA==', publicKeySpkiBase64: 'AA=='
-    }), { status: 200 })));
+      }), { status: 200 })));
     await expect(runSandboxEvaluation({ reportId: 'rep-test', reproductionSteps: 'CALL deposit(1000)', evidenceHash })).rejects.toThrow(/bound to different evidence/);
   });
 });
