@@ -180,7 +180,7 @@ export const INITIAL_REPORTS: VulnerabilityReport[] = [
     vulnerabilityType: 'Smart Contract Business Logic Flaw',
     severity: 'Critical',
     description: 'Under specific rounding conditions during flash loan settlement, integer division truncates precision, allowing repeated minor withdrawals without collateral lock.',
-    reproductionSteps: '1. Call deposit(1000)\n2. Execute flashLoan with exact 1e18 delta\n3. Trigger settlement method before state update',
+    reproductionSteps: 'CALL deposit(1000)\nCALL flashLoan(1e18)\nCALL settlement(before_state_update)',
     impact: 'Potential drain of locked liquidity pool funds under high frequency execution.',
     evidence: 'Calculated SHA-256 string for code PoC: 0xa8f391c49e...',
     createdAt: '2025-02-10T11:15:00Z'

@@ -83,6 +83,11 @@ export interface Verification {
   status: VerificationStatus;
   notes: string;
   verifiedAt?: string;
+  oracleExecutionId?: string;
+  oracleRequestHash?: string;
+  oracleEvidenceHash?: string;
+  oracleVerifierVersion?: string;
+  oracleStatus?: 'passed' | 'failed' | 'rejected' | 'unavailable';
 }
 
 export interface ReputationEvent {
