@@ -38,7 +38,56 @@ The platform exhibits a dual-architecture design:
 
 ---
 
-## 2. Non-UI Protocol Subsystems Deep Audit
+## 2. Priority Matrix for Real-Production Upgrades (Making the Protocol Real)
+
+To transition Trust Engine from a demo/simulated fallback state to a fully real production protocol, the following items are prioritized by their necessity in replacing simulated logic with real on-chain/cryptographic execution.
+
+### **P0 — Critical (Mandatory for Real On-Chain / Cryptographic Integrity)**
+1. **ABI Encoding for Smart Contract Escrow Release (`src/blockchain/useEscrowContract.ts`)**
+   - *Current State:* `releaseEscrowOnChain` currently submits a dummy zero-value transaction (`{ value: '0x0' }`) without function selector or arguments.
+   - *Real Upgrade Needed:* Use `viem` to encode `releaseEscrow(uint256 escrowId, address payable researcher)` calldata using `TRUST_BOUNTY_ESCROW_ABI` and pass `data` in transaction request.
+
+2. **On-Chain Reputation Registry Call Integration (`src/store/TrustContext.tsx`)**
+   - *Current State:* `verifySubmission()` updates researcher scores exclusively in local React state (`setIdentities`).
+   - *Real Upgrade Needed:* Call `ReputationRegistry.updateReputation(string did, uint256 increment)` on the deployed `ReputationRegistry.sol` contract when verification succeeds.
+
+3. **Asymmetric Cryptographic JWS VC Signatures (`src/identity/vcManager.ts`)**
+   - *Current State:* `issueTrustScoreCredential` formats JWS proof signatures as `btoa(payloadHash)` Base64 strings.
+   - *Real Upgrade Needed:* Sign Verifiable Credentials using ECDSA (`secp256k1`) or Ed25519 asymmetric private keys via Web Crypto API or `noble-curves` / `ethers.Wallet`.
+
+4. **Abi-Encoded Juror Arbitration Court Contract Calls (`src/store/useArbitrationStore.ts`)**
+   - *Current State:* `castJurorVote` sends raw hex string `0x1c8b3e8c...` calldata without validating against contract ABI.
+   - *Real Upgrade Needed:* Encode `castVote(uint256 disputeId, Ruling vote)` using `viem`/`ethers` ABI encoder against `DisputeArbitration.sol`.
+
+---
+
+### **P1 — Major (Mandatory for Decentralized Storage & Indexing Integrity)**
+5. **The Graph Indexer GraphQL Schema & Query Alignment (`subgraph/schema.graphql`, `src/store/useIndexedLedger.ts`)**
+   - *Current State:* `useIndexedLedger.ts` queries `blockchainEvents`, but `schema.graphql` defines `Bounty`, `ProofAnchor`, `EscrowRelease` entities.
+   - *Real Upgrade Needed:* Update `querySubgraphEvents` in `useIndexedLedger.ts` to query `proofAnchors` and `escrowReleases` as defined in `schema.graphql`.
+
+6. **Chainlink Oracle Bridge Contract Implementation (`contracts/ChainlinkOracleBridge.sol`)**
+   - *Current State:* File is missing from `contracts/` despite being claimed in documentation and deploy scripts.
+   - *Real Upgrade Needed:* Create `contracts/ChainlinkOracleBridge.sol` inheriting from Chainlink `Client.sol` to handle asynchronous off-chain sandbox evaluation fulfillments.
+
+7. **Dedicated Foundry/Docker Sandbox Worker Backend (`oracle/sandboxRunner.ts`)**
+   - *Current State:* Evaluates PoCs in browser via regex keyword matching (`reentrant`, `overflow`).
+   - *Real Upgrade Needed:* Deploy `oracle/sandboxRunner.ts` as an isolated microservice executing `forge test` inside ephemeral Docker containers.
+
+---
+
+### **P2 — Minor / Polish (Protocol Polish & Verification Service Integration)**
+8. **Live W3C Universal DID Resolver & VC Verifier Service Integration (`src/identity/didResolver.ts`, `src/identity/vcManager.ts`)**
+   - *Current State:* Remote HTTP calls time out in 1200ms and fall back to local JWK formatting.
+   - *Real Upgrade Needed:* Connect to a hosted W3C Universal Resolver endpoint or deploy `uniresolver` container.
+
+9. **EVM Contract Address Formatting in Bounty State (`src/domain/mockData.ts`, `src/store/TrustContext.tsx`)**
+   - *Current State:* Bounty escrow addresses are initialized as `0xTrustEscrowVault_101`.
+   - *Real Upgrade Needed:* Store valid 40-character EVM checksum addresses (`0x1111111111111111111111111111111111111111`).
+
+---
+
+## 3. Non-UI Protocol Subsystems Deep Audit
 
 ### A. Smart Contracts (`contracts/`)
 - **`TrustBountyEscrow.sol`**:
@@ -88,7 +137,7 @@ The platform exhibits a dual-architecture design:
 
 ---
 
-## 3. Discrepancies & Unintended Elements (User Perspective)
+## 4. Discrepancies & Unintended Elements (User Perspective)
 
 1. **Documentation vs Code Discrepancies:**
    - **`README.md` Claims:** Claims `ChainlinkOracleBridge.sol` exists in `contracts/`.
@@ -104,7 +153,7 @@ The platform exhibits a dual-architecture design:
 
 ---
 
-## 4. Test Suite Execution & Verification Summary
+## 5. Test Suite Execution & Verification Summary
 
 - **Build Verification (`npm run build`):**
   - Command: `tsc && vite build`
