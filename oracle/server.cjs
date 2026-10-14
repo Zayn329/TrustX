@@ -1,5 +1,7 @@
 const http = require('node:http');
 const crypto = require('node:crypto');
+const fs = require('node:fs');
+const os = require('node:os');
 const { spawn } = require('node:child_process');
 const path = require('node:path');
 
@@ -11,8 +13,24 @@ const ALLOWED_ORIGIN = process.env.ORACLE_ALLOWED_ORIGIN || 'http://localhost:51
 const GATEWAY_TOKEN = process.env.ORACLE_GATEWAY_TOKEN || '';
 const WORKER_MODE = process.env.ORACLE_WORKER_MODE || 'process';
 const WORKER_IMAGE = process.env.ORACLE_WORKER_IMAGE || 'trustx-oracle-worker:local';
+const JOB_STORE_PATH = process.env.ORACLE_JOB_STORE_PATH || path.join(os.tmpdir(), 'trustx-oracle-jobs.json');
 const jobs = new Map();
 const requestTokens = new Map();
+
+try {
+  const storedJobs = JSON.parse(fs.readFileSync(JOB_STORE_PATH, 'utf8'));
+  for (const [idempotencyKey, result] of Object.entries(storedJobs)) jobs.set(idempotencyKey, result);
+} catch {
+  // A missing or unreadable store starts empty; the current request can still be evaluated.
+}
+
+function persistJobs() {
+  const directory = path.dirname(JOB_STORE_PATH);
+  fs.mkdirSync(directory, { recursive: true });
+  const temporaryPath = `${JOB_STORE_PATH}.${process.pid}.tmp`;
+  fs.writeFileSync(temporaryPath, JSON.stringify(Object.fromEntries(jobs)), { mode: 0o600 });
+  fs.renameSync(temporaryPath, JOB_STORE_PATH);
+}
 
 const hasConfiguredSigningKey = Boolean(process.env.ORACLE_SIGNING_PRIVATE_KEY_PEM);
 if (process.env.NODE_ENV === 'production' && !hasConfiguredSigningKey) {
@@ -141,6 +159,7 @@ async function evaluate(body) {
   const signature = crypto.sign(null, Buffer.from(JSON.stringify(unsigned)), keyPair).toString('base64');
   const result = { ...unsigned, signature, publicKeySpkiBase64 };
   jobs.set(body.idempotencyKey, result);
+  persistJobs();
   return result;
 }
 
