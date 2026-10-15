@@ -1,5 +1,5 @@
 # 🛡️ Trust Engine — Trustless Open-Source Bug Bounty Platform
-
+~~commit by arman and zain 
 > **A Decentralized Protocol for Immutable Vulnerability Provenance, Programmatic Smart Contract Escrows, Portable W3C Researcher Reputation, and AI-Powered Fraud Detection.**
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
