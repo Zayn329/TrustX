@@ -112,7 +112,7 @@ export const ExplorerView: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleVerifySubmission}
-                  disabled={isVerifying || activeEscrow?.status === 'released'}
+                  disabled={isVerifying || activeBounty?.escrowStatus === 'released'}
                   className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ShieldCheck className="h-4 w-4" />
