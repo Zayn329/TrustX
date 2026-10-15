@@ -22,8 +22,12 @@ export const ExplorerView: React.FC = () => {
   const activeEscrow = activeBounty ? escrows.find(e => e.id === activeBounty.escrowId) : undefined;
 
   useEffect(() => {
-    if (activeReport) runSandboxEvaluation(activeReport.reproductionSteps).then(res => setOracleResult(res));
-  }, [activeReport]);
+    if (!activeReport) return;
+    const activeProofHash = proofs.find((proof) => proof.contributionId === activeReport.id)?.contentHash;
+    runSandboxEvaluation({ reportId: activeReport.id, bountyId: activeReport.bountyId, scope: activeBounty?.scope, reproductionSteps: activeReport.reproductionSteps, evidenceHash: activeProofHash })
+      .then(res => setOracleResult(res))
+      .catch(() => setOracleResult(null));
+  }, [activeReport, proofs]);
 
   const handleSelectReport = (id: string) => {
     setSelectedReportId(id);

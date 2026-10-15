@@ -251,7 +251,18 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const report = reports.find(r => r.id === reportId);
     if (!report) return;
 
-    const technicalResult = await runSandboxEvaluation(report.reproductionSteps);
+    const reportProof = proofs.find((proof) => proof.contributionId === report.id);
+    const reportBounty = bounties.find((bounty) => bounty.id === report.bountyId);
+    const technicalResult = await runSandboxEvaluation({
+      reportId: report.id,
+      bountyId: report.bountyId,
+      scope: reportBounty?.scope,
+      reproductionSteps: report.reproductionSteps,
+      evidenceHash: reportProof?.contentHash
+    });
+    if (technicalResult.status === 'unavailable') {
+      throw new Error('Technical verifier is unavailable; submission remains unverified');
+    }
     const technicallyApproved = technicalResult.status === 'passed';
     if (technicallyApproved !== isApproved) {
       throw new Error(`Verifier result is ${technicalResult.status}; manual decision does not match technical evidence`);
@@ -269,7 +280,12 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               ...v,
               status: isApproved ? 'valid' : 'invalid',
               notes,
-              verifiedAt: nowIso
+              verifiedAt: nowIso,
+              oracleExecutionId: technicalResult.executionId,
+              oracleRequestHash: technicalResult.requestHash,
+              oracleEvidenceHash: technicalResult.evidenceHash,
+              oracleVerifierVersion: technicalResult.verifierVersion,
+              oracleStatus: technicalResult.status
             }
           : v
       )

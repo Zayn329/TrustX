@@ -116,7 +116,7 @@ The protocol distinguishes between **Cryptographic Provenance** and **Technical 
    - *Result*: Timestamped, indisputable proof of discovery anchored on-chain that prevents front-running.
 
 2. **Technical Vulnerability Verification (Post-Submission)**:
-   - Security reviewers and AI/ML static analyzers execute the reproduction steps in an isolated Foundry/Docker sandbox container (`oracle/sandboxRunner.ts`).
+   - Security reviewers and AI/ML static analyzers execute the restricted reproduction format through the remote verifier gateway and worker (`oracle/server.cjs`, `oracle/worker.cjs`).
    - Once verified, the funding company explicitly triggers the receipt-confirmed escrow release.
    - The approving wallet submits the receipt-confirmed `ReputationRegistry` update; credential issuance remains a separate application layer.
 
@@ -172,9 +172,9 @@ The platform incorporates three distinct AI/ML and AI engineering pipelines:
 └───────────────────────────────┴───────────────────────────────┴──────────────────────────┘
 ```
 
-1. **Automated PoC Triage Engine (`oracle/sandboxRunner.ts`)**:
-   - Parses reproduction steps using pattern recognition to detect reentrancy, precision loss, arithmetic overflow, and permission bypass vectors.
-   - Calculates dynamic code coverage percentages based on test script length and assertion complexity.
+1. **Automated PoC Triage Engine (`oracle/server.cjs` + `oracle/worker.cjs`)**:
+   - Executes only allowlisted declarative reproduction operations against the pinned TrustX demo fixture.
+   - Reports measured fixture operation coverage and structured execution logs; it does not infer validity from text length or keywords.
 
 2. **Sybil & Fraud Detection Engine (`NetworkComponents.tsx`)**:
    - Analyzes cross-account payload similarity and DID submission velocity.
@@ -310,8 +310,12 @@ To deploy **Trust Engine** to a live Ethereum testnet/mainnet environment, execu
 2. Set `VITE_PINATA_JWT` in `.env`.
 
 ### Step 4: Host Oracle Sandbox Worker
-1. Deploy `oracle/sandboxRunner.ts` inside an isolated container on **Fly.io**, **AWS ECS**, or **Render**.
-2. Set `VITE_ORACLE_SERVICE_URL` in `.env`.
+1. Start the verifier gateway locally with `npm run oracle:server`, or deploy `oracle/server.cjs` with its child `oracle/worker.cjs` in an isolated worker environment. For Docker execution, build `oracle/Dockerfile` as `trustx-oracle-worker:local` and set `ORACLE_WORKER_MODE=docker`.
+2. Set `VITE_ORACLE_SERVICE_URL` in `.env` to the gateway URL.
+3. Run `npm run oracle:keys` once to generate a stable Ed25519 signing key pair. Keep `ORACLE_SIGNING_PRIVATE_KEY_PEM` server-side and pin the printed SPKI public key in `VITE_ORACLE_SIGNING_PUBLIC_KEY`.
+4. Use `npm run oracle:check` to verify the signed execution, request-token authentication, idempotency, and unsafe-input rejection path.
+
+The verifier accepts only the restricted declarative demo format (`CALL deposit(...)`, `CALL flashLoan(...)`, and `CALL settlement(...)`). It executes the target fixture in a separate child process, returns measured fixture coverage, binds the response to the report/evidence hash, and signs the result. A `passed` result is technical evidence only; reputation and company-authorized escrow release remain separate operations.
 
 ---
 
@@ -338,7 +342,9 @@ VITE_SUBGRAPH_ENDPOINT=https://api.studio.thegraph.com/query/your_studio_id/trus
 
 # 5. AUTOMATED POC ORACLE SANDBOX MICROSERVICE
 VITE_ORACLE_SERVICE_URL=https://oracle-sandbox.trustengine.io
-ORACLE_SHARED_SECRET=your_secure_oracle_hmac_secret_here
+ORACLE_GATEWAY_TOKEN=server_only_gateway_token
+ORACLE_WORKER_MODE=process
+ORACLE_WORKER_IMAGE=trustx-oracle-worker:local
 
 # 6. CONTRACT DEPLOYMENT & CI KEYS (SERVER / CI ONLY)
 DEPLOYER_PRIVATE_KEY=0x0000000000000000000000000000000000000000000000000000000000000000

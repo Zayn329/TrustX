@@ -11,7 +11,11 @@
     "contracts:compile": "hardhat compile",
     "contracts:test": "hardhat test",
     "contracts:deploy:sepolia": "hardhat run scripts/deploy-sepolia.cjs --network sepolia",
-    "contracts:check:sepolia": "node scripts/check-sepolia.cjs"
+    "contracts:check:sepolia": "node scripts/check-sepolia.cjs",
+    "oracle:server": "node oracle/server.cjs",
+    "oracle:check": "node scripts/check-oracle.cjs",
+    "oracle:persistence:check": "node scripts/check-oracle-persistence.cjs",
+    "oracle:keys": "node scripts/generate-oracle-keys.cjs"
   },
   "dependencies": {
     "firebase": "^12.19.0",

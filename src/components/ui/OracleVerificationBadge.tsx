@@ -1,5 +1,5 @@
 import React from 'react';
-import { Cpu, CheckCircle2, Terminal } from 'lucide-react';
+import { Cpu, CheckCircle2, CircleAlert, Terminal } from 'lucide-react';
 import { SandboxExecutionResult } from '../../../oracle/sandboxRunner';
 
 interface OracleVerificationBadgeProps {
@@ -7,6 +7,7 @@ interface OracleVerificationBadgeProps {
 }
 
 export const OracleVerificationBadge: React.FC<OracleVerificationBadgeProps> = ({ result }) => {
+  const passed = result.status === 'passed';
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
       <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
@@ -14,8 +15,8 @@ export const OracleVerificationBadge: React.FC<OracleVerificationBadgeProps> = (
           <Cpu className="w-5 h-5 text-indigo-400" />
           <span className="text-xs font-bold text-slate-200">Remote Technical Verifier</span>
         </div>
-        <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-mono px-2 py-0.5 rounded border border-emerald-500/20 font-semibold flex items-center gap-1">
-          <CheckCircle2 className="w-3 h-3" /> Oracle Verified ({result.coveragePercentage}%)
+        <span className={`${passed ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-300 border-amber-500/20'} text-[10px] font-mono px-2 py-0.5 rounded border font-semibold flex items-center gap-1`}>
+          {passed ? <CheckCircle2 className="w-3 h-3" /> : <CircleAlert className="w-3 h-3" />} {passed ? 'Oracle Verified' : `Oracle ${result.status}`} ({result.coveragePercentage}%)
         </span>
       </div>
 
@@ -29,6 +30,9 @@ export const OracleVerificationBadge: React.FC<OracleVerificationBadgeProps> = (
             {log}
           </div>
         ))}
+        <div className="border-t border-slate-800 pt-2 text-[10px] text-slate-500">
+          execution {result.executionId} · {result.verifierVersion} · signed result
+        </div>
       </div>
     </div>
   );

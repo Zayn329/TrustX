@@ -6,6 +6,9 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
-    exclude: ['node_modules', 'dist', 'test']
+    exclude: ['node_modules', 'dist', 'test'],
+    pool: 'threads',
+    maxWorkers: 1,
+    isolate: false,
   }
 });
