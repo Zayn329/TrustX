@@ -20,9 +20,10 @@ export type TimelineStage =
 
 interface VerificationTimelineProps {
   currentStage: TimelineStage;
+  statusLabel?: string;
 }
 
-export const VerificationTimeline: React.FC<VerificationTimelineProps> = ({ currentStage }) => {
+export const VerificationTimeline: React.FC<VerificationTimelineProps> = ({ currentStage, statusLabel }) => {
   const stages: { id: TimelineStage; label: string; icon: React.ReactNode }[] = [
     { id: 'discovered', label: 'Discovered', icon: <FileCode2 className="w-4 h-4" /> },
     { id: 'submitted', label: 'Submitted', icon: <Send className="w-4 h-4" /> },
@@ -38,7 +39,7 @@ export const VerificationTimeline: React.FC<VerificationTimelineProps> = ({ curr
 
   return (
     <div className="tx-surface rounded-2xl p-6 sm:p-7">
-      <div className="flex items-end justify-between gap-4"><div><div className="tx-kicker">Proof lifecycle</div><h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-white">Where the contribution stands</h3></div><span className="hidden text-xs text-slate-500 sm:block">Completed · current · next</span></div>
+      <div className="flex items-end justify-between gap-4"><div><div className="tx-kicker">Proof lifecycle</div><h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-white">Where the contribution stands</h3></div><div className="flex items-center gap-3"><span className="hidden text-xs text-slate-500 sm:block">Completed · current · next</span>{statusLabel && <span className={`status-pill ${statusLabel.toLowerCase().includes('pending') ? 'status-warning' : statusLabel.toLowerCase().includes('released') || statusLabel.toLowerCase().includes('valid') ? 'status-success' : 'status-warning'}`}>{statusLabel}</span>}</div></div>
 
       <div className="relative mt-7 overflow-x-auto scrollbar-none pb-2">
         <div className="flex min-w-[620px] items-start justify-between px-2 sm:min-w-0">
@@ -50,7 +51,7 @@ export const VerificationTimeline: React.FC<VerificationTimelineProps> = ({ curr
           />
 
           {stages.map((stage, idx) => {
-            const isPassed = idx <= activeIdx;
+            const isPassed = idx < activeIdx || (idx === activeIdx && currentStage !== 'technical_verification');
             const isCurrent = idx === activeIdx;
 
             return (

@@ -247,19 +247,32 @@ export function useEscrowContract() {
 
     try {
       await ensureEscrowDeployment();
-      const client = walletClient();
-      if (!client) throw new Error('Unable to initialize wallet client');
+      if (!window.ethereum) throw new Error('Wallet provider unavailable');
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }) as string[];
+      const sender = accounts?.[0];
+      if (!sender || !isValidEthAddress(sender)) throw new Error('Wallet account unavailable');
+      const chainId = Number(await window.ethereum.request({ method: 'eth_chainId' }));
+      if (chainId !== blockchainConfig.chainId) throw new Error('Wallet is not on the configured Sepolia network');
+      if (sender.toLowerCase() !== wallet.address?.toLowerCase()) {
+        throw new Error('Connected wallet account changed. Reconnect TrustX and try again.');
+      }
 
       const data = encodeFunctionData({
         abi: TRUST_BOUNTY_ESCROW_ABI,
         functionName: 'releaseEscrow',
         args: [parsedEscrowId, getAddress(researcherAddress) as Address]
       });
-      const hash = await client.sendTransaction({
-        account: wallet.address as Address,
-        to: blockchainConfig.trustBountyEscrowAddress as Address,
-        data
-      });
+      // Match the direct injected-provider transaction flow used by arbitration actions.
+      // This lets the wallet handle submission, including delegated-account policies.
+      const hash = await window.ethereum.request({
+        method: 'eth_sendTransaction',
+        params: [{
+          from: getAddress(sender),
+          to: getAddress(blockchainConfig.trustBountyEscrowAddress),
+          data,
+          value: '0x0'
+        }]
+      }) as `0x${string}`;
       recordBlockchainTransaction({
         txHash: hash,
         action: 'release_escrow',
