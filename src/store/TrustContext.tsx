@@ -65,7 +65,7 @@ interface TrustContextType {
   fundEscrowError: string | null;
   // Functions
   submitVulnerability: (payload: NewSubmissionPayload) => Promise<void>;
-  verifySubmission: (reportId: string, isApproved: boolean, notes: string) => Promise<void>;
+  verifySubmission: (reportId: string, isApproved?: boolean, notes?: string) => Promise<void>;
   raiseDispute: (reportId: string, reason: string, evidence: string) => Promise<void>;
   releaseEscrow: (bountyId: string, researcherAddress: string) => Promise<void>;
   openCreateBountyModal: () => void;
@@ -201,19 +201,42 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
       const proofHash = await sha256(JSON.stringify(newReport));
       const proofNonce = Date.now();
-      const signature = await signTypedDataProof({
-        researcherDid: payload.researcherId,
-        bountyId: generateOnChainIdFromFirestoreId(payload.bountyId),
-        proofHash,
-        nonce: proofNonce
-      });
-      const anchor = await anchorProofOnChain(
-        generateOnChainIdFromFirestoreId(payload.bountyId),
-        proofHash,
-        payload.researcherId,
-        signature,
-        proofNonce
-      );
+      let signature = '0x';
+      let proofStatus: 'generated' | 'anchored_on_chain' = 'generated';
+      let proofSource: 'receipt' | 'seeded_demo' = 'seeded_demo';
+
+      if (wallet.isConnected && isWalletOnConfiguredChain()) {
+        try {
+          signature = await signTypedDataProof({
+            researcherDid: payload.researcherId,
+            bountyId: generateOnChainIdFromFirestoreId(payload.bountyId),
+            proofHash,
+            nonce: proofNonce
+          });
+          const anchor = await anchorProofOnChain(
+            generateOnChainIdFromFirestoreId(payload.bountyId),
+            proofHash,
+            payload.researcherId,
+            signature,
+            proofNonce
+          );
+          proofStatus = 'anchored_on_chain';
+          proofSource = 'receipt';
+          setBlockchainEvents(prev => [{
+            id: `${anchor.txHash}:0`,
+            eventType: 'ProofAnchored',
+            txHash: anchor.txHash,
+            blockNumber: Number(anchor.blockNumber),
+            timestamp: nowIso,
+            actor: anchor.signer,
+            status: 'confirmed',
+            source: 'receipt',
+            details: `Proof ${anchor.proofHash} anchored for bounty ${anchor.bountyId}.`
+          }, ...prev]);
+        } catch (err) {
+          console.warn('[submitVulnerability] Wallet signature or anchoring skipped/failed:', err);
+        }
+      }
 
       setReports(prev => [reportWithId, ...prev]);
       setProofs(prev => [{
@@ -222,19 +245,19 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         contentHash: proofHash,
         signature,
         timestamp: nowIso,
-        proofStatus: 'anchored_on_chain',
-        source: 'receipt'
+        proofStatus,
+        source: proofSource
       }, ...prev]);
-      setBlockchainEvents(prev => [{
-        id: `${anchor.txHash}:0`,
-        eventType: 'ProofAnchored',
-        txHash: anchor.txHash,
-        blockNumber: Number(anchor.blockNumber),
-        timestamp: nowIso,
-        actor: anchor.signer,
-        status: 'confirmed',
-        source: 'receipt',
-        details: `Proof ${anchor.proofHash} anchored for bounty ${anchor.bountyId}.`
+
+      setVerifications(prev => [{
+        id: `verif-${reportId}`,
+        contributionId: reportId,
+        verifierId: 'oracle-sandbox-v1',
+        verifierName: 'TrustX Automated PoC Verifier',
+        status: 'pending',
+        notes: 'Awaiting oracle PoC verification run',
+        verifiedAt: undefined,
+        oracleVerifierVersion: 'trustx-verifier-1'
       }, ...prev]);
 
     } catch (err) {
@@ -246,10 +269,10 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   /**
    * Verifies submission on-chain, updating portable reputation and releasing escrow funds.
    */
-  const verifySubmission = async (reportId: string, isApproved: boolean, notes: string) => {
+  const verifySubmission = async (reportId: string, isApproved?: boolean, notes?: string) => {
     const nowIso = new Date().toISOString();
     const report = reports.find(r => r.id === reportId);
-    if (!report) return;
+    if (!report) throw new Error('Report not found');
 
     const reportProof = proofs.find((proof) => proof.contributionId === report.id);
     const reportBounty = bounties.find((bounty) => bounty.id === report.bountyId);
@@ -263,35 +286,65 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (technicalResult.status === 'unavailable') {
       throw new Error('Technical verifier is unavailable; submission remains unverified');
     }
+
     const technicallyApproved = technicalResult.status === 'passed';
-    if (technicallyApproved !== isApproved) {
+    const finalApproved = isApproved !== undefined ? isApproved : technicallyApproved;
+
+    if (isApproved !== undefined && technicallyApproved !== isApproved) {
       throw new Error(`Verifier result is ${technicalResult.status}; manual decision does not match technical evidence`);
     }
 
+    const verificationStatus = finalApproved ? 'valid' : 'invalid';
+    const resultNotes = notes || (finalApproved
+      ? `Verified successfully by TrustX PoC verifier (Coverage: ${technicalResult.coveragePercentage}%).`
+      : `Verification failed: ${technicalResult.vulnerabilityCategory}.`);
+
     let reputationResult: Awaited<ReturnType<typeof updateReputationOnChain>> | null = null;
-    if (isApproved) {
-      reputationResult = await updateReputationOnChain(report.researcherId, 3);
+    if (finalApproved && wallet.isConnected && isWalletOnConfiguredChain()) {
+      try {
+        reputationResult = await updateReputationOnChain(report.researcherId, 3);
+      } catch (err) {
+        console.warn('[verifySubmission] On-chain reputation update skipped/failed:', err);
+      }
     }
 
-    setVerifications(prev =>
-      prev.map(v =>
-        v.contributionId === reportId
-          ? {
-              ...v,
-              status: isApproved ? 'valid' : 'invalid',
-              notes,
-              verifiedAt: nowIso,
-              oracleExecutionId: technicalResult.executionId,
-              oracleRequestHash: technicalResult.requestHash,
-              oracleEvidenceHash: technicalResult.evidenceHash,
-              oracleVerifierVersion: technicalResult.verifierVersion,
-              oracleStatus: technicalResult.status
-            }
-          : v
-      )
-    );
+    setVerifications(prev => {
+      const exists = prev.some(v => v.contributionId === reportId);
+      if (exists) {
+        return prev.map(v =>
+          v.contributionId === reportId
+            ? {
+                ...v,
+                status: verificationStatus,
+                notes: resultNotes,
+                verifiedAt: nowIso,
+                oracleExecutionId: technicalResult.executionId,
+                oracleRequestHash: technicalResult.requestHash,
+                oracleEvidenceHash: technicalResult.evidenceHash,
+                oracleVerifierVersion: technicalResult.verifierVersion,
+                oracleStatus: technicalResult.status
+              }
+            : v
+        );
+      } else {
+        return [{
+          id: `verif-${reportId}`,
+          contributionId: reportId,
+          verifierId: 'oracle-sandbox-v1',
+          verifierName: 'TrustX Automated PoC Verifier',
+          status: verificationStatus,
+          notes: resultNotes,
+          verifiedAt: nowIso,
+          oracleExecutionId: technicalResult.executionId,
+          oracleRequestHash: technicalResult.requestHash,
+          oracleEvidenceHash: technicalResult.evidenceHash,
+          oracleVerifierVersion: technicalResult.verifierVersion,
+          oracleStatus: technicalResult.status
+        }, ...prev];
+      }
+    });
 
-    if (isApproved) {
+    if (finalApproved) {
       const bounty = bounties.find(b => b.id === report.bountyId);
       setIdentities(prev =>
         prev.map(id => {
