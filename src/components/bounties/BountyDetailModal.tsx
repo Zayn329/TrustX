@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ShieldCheck, Lock, DollarSign, Calendar, Send } from 'lucide-react';
+import { X, ShieldCheck, Lock, DollarSign, Calendar, Send, Sparkles } from 'lucide-react';
 import { Bounty } from '../../domain/types';
 import { useTrust } from '../../store/TrustContext';
 import { SubmitVulnerabilityModal } from './SubmitVulnerabilityModal';
@@ -10,12 +10,14 @@ interface BountyDetailModalProps {
 }
 
 export const BountyDetailModal: React.FC<BountyDetailModalProps> = ({ bounty, onClose }) => {
-  const { escrows, releaseEscrow } = useTrust();
+  const { reports, verifications, escrows, releaseEscrow, verifySubmission } = useTrust();
   const escrow = escrows.find(e => e.id === bounty.escrowId);
+  const bountyReports = reports.filter(r => r.bountyId === bounty.id);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [researcherAddress, setResearcherAddress] = useState(escrow?.researcherAddress || '');
   const [releaseError, setReleaseError] = useState<string | null>(null);
   const [isReleasing, setIsReleasing] = useState(false);
+  const [verifyingReportId, setVerifyingReportId] = useState<string | null>(null);
 
   useEffect(() => {
     setResearcherAddress(escrow?.researcherAddress || '');
@@ -107,6 +109,51 @@ export const BountyDetailModal: React.FC<BountyDetailModalProps> = ({ bounty, on
                 ))}
               </ul>
             </div>
+
+            {/* Submissions for this Bounty */}
+            {bountyReports.length > 0 && (
+              <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-700/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-200">Submissions for this Bounty ({bountyReports.length})</span>
+                </div>
+                <div className="space-y-2">
+                  {bountyReports.map(rep => {
+                    const ver = verifications.find(v => v.contributionId === rep.id);
+                    const isVerifyingThis = verifyingReportId === rep.id;
+                    return (
+                      <div key={rep.id} className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-[10px] text-blue-300 font-semibold">{rep.id}</span>
+                            <span className={`status-pill ${ver?.status === 'valid' ? 'status-success' : ver?.status === 'pending' ? 'status-warning' : 'status-critical'}`}>
+                              {ver?.status || 'pending'}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-200 font-medium mt-1 truncate">{rep.title}</div>
+                        </div>
+                        <button
+                          disabled={isVerifyingThis}
+                          onClick={async () => {
+                            setVerifyingReportId(rep.id);
+                            try {
+                              await verifySubmission(rep.id);
+                            } catch (e) {
+                              console.error('[BountyDetailModal] Verification failed:', e);
+                            } finally {
+                              setVerifyingReportId(null);
+                            }
+                          }}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white flex items-center gap-1 shrink-0"
+                        >
+                          <Sparkles className="w-3 h-3 text-blue-200" />
+                          <span>{isVerifyingThis ? 'Verifying...' : 'Verify'}</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
               <div className="bg-slate-950/55 p-4 rounded-2xl border border-slate-700/50 space-y-2">
               <div className="text-xs font-bold text-slate-200 flex items-center gap-2">
