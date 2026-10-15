@@ -81,7 +81,7 @@ describe('Stage 2 — Proof & Trust Passport', () => {
     const closeBtns = screen.getAllByRole('button', { name: /Close Inspection/i });
     expect(closeBtns.length).toBeGreaterThan(0);
 
-    fireEvent.click(closeBtns[0]);
+    fireEvent.click(closeBtns[closeBtns.length - 1]);
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
 });
