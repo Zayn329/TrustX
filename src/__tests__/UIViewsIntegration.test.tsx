@@ -14,8 +14,8 @@ describe('Trust Engine UI Integration & Navigation', () => {
   it('navigates to Bounty Marketplace view when clicked', () => {
     render(<App />);
 
-    const bountyTab = screen.getByRole('button', { name: /Bounty Marketplace/i });
-    fireEvent.click(bountyTab);
+    const bountyTabs = screen.getAllByRole('button', { name: /Bounty Marketplace/i });
+    fireEvent.click(bountyTabs[0]);
 
     expect(screen.getByText('Bug Bounty Marketplace')).toBeTruthy();
     expect(screen.getByPlaceholderText(/Search bounties.../i)).toBeTruthy();
@@ -24,8 +24,8 @@ describe('Trust Engine UI Integration & Navigation', () => {
   it('navigates to Trust Passport view when clicked', () => {
     render(<App />);
 
-    const passportTab = screen.getByRole('button', { name: /Trust Passport/i });
-    fireEvent.click(passportTab);
+    const passportTabs = screen.getAllByRole('button', { name: /Trust Passport/i });
+    fireEvent.click(passportTabs[0]);
 
     expect(screen.getAllByText('Alex Rivera').length).toBeGreaterThan(0);
     expect(screen.getByText('Verified Security Researcher')).toBeTruthy();
@@ -34,8 +34,8 @@ describe('Trust Engine UI Integration & Navigation', () => {
   it('navigates to Contribution Explorer view when clicked', () => {
     render(<App />);
 
-    const explorerTab = screen.getByRole('button', { name: /Contribution Explorer/i });
-    fireEvent.click(explorerTab);
+    const explorerTabs = screen.getAllByRole('button', { name: /Contribution Explorer/i });
+    fireEvent.click(explorerTabs[0]);
 
     expect(screen.getAllByText('Contribution Audit Explorer').length).toBeGreaterThan(0);
   });
@@ -43,8 +43,8 @@ describe('Trust Engine UI Integration & Navigation', () => {
   it('navigates to Trust Graph view when clicked', () => {
     render(<App />);
 
-    const graphTab = screen.getByRole('button', { name: /Trust Graph/i });
-    fireEvent.click(graphTab);
+    const graphTabs = screen.getAllByRole('button', { name: /Trust Graph/i });
+    fireEvent.click(graphTabs[0]);
 
     expect(screen.getAllByText('Interactive Trust Graph').length).toBeGreaterThan(0);
   });
@@ -52,8 +52,8 @@ describe('Trust Engine UI Integration & Navigation', () => {
   it('navigates to Network & Ledger view when clicked', () => {
     render(<App />);
 
-    const networkTab = screen.getByRole('button', { name: /Network & Ledger/i });
-    fireEvent.click(networkTab);
+    const networkTabs = screen.getAllByRole('button', { name: /Network & Ledger/i });
+    fireEvent.click(networkTabs[0]);
 
     expect(screen.getAllByText('Network & Protocol Monitor').length).toBeGreaterThan(0);
   });

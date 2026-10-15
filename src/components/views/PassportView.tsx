@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { UserCheck, Key, Award, QrCode, ArrowLeft, ShieldAlert, Sliders } from 'lucide-react';
+import { UserCheck, Key, Award, QrCode, ArrowLeft, ShieldAlert, Sliders, FileSearch } from 'lucide-react';
 import { useTrust } from '../../store/TrustContext';
 import { PortableReputationDiagram } from '../passport/PortableReputationDiagram';
 import { ScoreBreakdown } from '../passport/ScoreBreakdown';
 import { CredentialQRModal } from '../passport/CredentialQRModal';
+import { ProofDetailModal } from '../passport/ProofDetailModal';
 import { issueTrustScoreCredential } from '../../identity/vcManager';
+import { VulnerabilityReport } from '../../domain/types';
 
 export const PassportView: React.FC = () => {
-  const { currentResearcher, reputationEvents } = useTrust();
+  const { currentResearcher, reputationEvents, reports, verifications } = useTrust();
   const [isCredentialModalOpen, setIsCredentialModalOpen] = useState(false);
+  const [selectedInspectReport, setSelectedInspectReport] = useState<VulnerabilityReport | null>(null);
 
   // Category I Item 87: Interactive Reputation Score Simulator
   const [simCriticalCount, setSimCriticalCount] = useState(2);
@@ -22,6 +25,8 @@ export const PassportView: React.FC = () => {
     currentResearcher.trustScore,
     currentResearcher.successfulBountiesCount
   );
+
+  const researcherReports = reports.filter(r => r.researcherId === currentResearcher.id);
 
   return (
     <div className="space-y-8">
@@ -80,16 +85,66 @@ export const PassportView: React.FC = () => {
         </div>
       </div>
 
+      {/* Researcher Contribution Traceability */}
+      <div className="tx-surface rounded-2xl p-6 sm:p-7 space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <div className="tx-kicker">Researcher Contributions</div>
+            <h3 className="text-lg font-bold text-slate-100 mt-1">Verified Submissions & Proof Records</h3>
+          </div>
+          <span className="font-mono text-xs text-slate-400 bg-slate-900 px-3 py-1 rounded-lg border border-slate-800">
+            {researcherReports.length} Submissions Total
+          </span>
+        </div>
+
+        <div className="space-y-3">
+          {researcherReports.map((report) => {
+            const verification = verifications.find(v => v.contributionId === report.id);
+            const isValid = verification?.status === 'valid';
+
+            return (
+              <div
+                key={report.id}
+                className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-all"
+              >
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-semibold text-cyan-400">{report.id}</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                      isValid ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                    }`}>
+                      {isValid ? 'Verified Valid (+3 Score)' : 'Pending / Unverified'}
+                    </span>
+                  </div>
+                  <h4 className="text-sm font-semibold text-white truncate">{report.title}</h4>
+                  <p className="text-xs text-slate-400 font-mono truncate">
+                    Bounty: {report.bountyId} • Severity: {report.severity}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setSelectedInspectReport(report)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/30 rounded-lg text-xs font-medium transition-all shrink-0"
+                >
+                  <FileSearch className="w-3.5 h-3.5" />
+                  <span>Inspect Evidence Hash & Proof</span>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Portable Reputation Model */}
       <PortableReputationDiagram />
 
-      {/* Score Breakdown (Issue 22) */}
+      {/* Score Breakdown */}
       <ScoreBreakdown
         factors={currentResearcher.reputationFactors}
         totalScore={currentResearcher.trustScore}
       />
 
-      {/* Interactive Reputation Score Simulator (Category I Item 87) */}
+      {/* Interactive Reputation Score Simulator */}
       <div className="tx-surface rounded-2xl p-6 space-y-5 sm:p-7">
         <div className="flex flex-col gap-3 border-b border-slate-700/40 pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
@@ -153,7 +208,7 @@ export const PassportView: React.FC = () => {
         </div>
       </div>
 
-      {/* Verified On-Chain Reputation History (Issue 23) */}
+      {/* Verified On-Chain Reputation History */}
       <div className="tx-surface rounded-2xl p-6 sm:p-7">
         <div className="tx-kicker">Reputation provenance</div><h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-white mb-5">Reputation event log</h3>
         <div className="space-y-3">
@@ -199,6 +254,14 @@ export const PassportView: React.FC = () => {
         onClose={() => setIsCredentialModalOpen(false)}
         credential={credential}
       />
+
+      {selectedInspectReport && (
+        <ProofDetailModal
+          report={selectedInspectReport}
+          verification={verifications.find(v => v.contributionId === selectedInspectReport.id)}
+          onClose={() => setSelectedInspectReport(null)}
+        />
+      )}
     </div>
   );
 };
