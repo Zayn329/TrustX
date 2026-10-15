@@ -79,9 +79,39 @@ const TrustContext = createContext<TrustContextType | undefined>(undefined);
 export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [identities, setIdentities] = useState<Identity[]>(INITIAL_IDENTITIES);
   const [bounties, setBounties] = useState<Bounty[]>([]);
-  const [reports, setReports] = useState<VulnerabilityReport[]>(INITIAL_REPORTS);
+  const [reports, setReports] = useState<VulnerabilityReport[]>(() => {
+    try {
+      const saved = localStorage.getItem('trustx_persisted_reports');
+      return saved ? JSON.parse(saved) : INITIAL_REPORTS;
+    } catch {
+      return INITIAL_REPORTS;
+    }
+  });
   const [proofs, setProofs] = useState<Proof[]>(INITIAL_PROOFS);
-  const [verifications, setVerifications] = useState<Verification[]>(INITIAL_VERIFICATIONS);
+  const [verifications, setVerifications] = useState<Verification[]>(() => {
+    try {
+      const saved = localStorage.getItem('trustx_persisted_verifications');
+      return saved ? JSON.parse(saved) : INITIAL_VERIFICATIONS;
+    } catch {
+      return INITIAL_VERIFICATIONS;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('trustx_persisted_reports', JSON.stringify(reports));
+    } catch (err) {
+      console.warn('Failed to persist reports to localStorage', err);
+    }
+  }, [reports]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('trustx_persisted_verifications', JSON.stringify(verifications));
+    } catch (err) {
+      console.warn('Failed to persist verifications to localStorage', err);
+    }
+  }, [verifications]);
   const [reputationEvents, setReputationEvents] = useState<ReputationEvent[]>(INITIAL_REPUTATION_EVENTS);
   const [escrows, setEscrows] = useState<Escrow[]>(INITIAL_ESCROWS);
   const [blockchainEvents, setBlockchainEvents] = useState<BlockchainEvent[]>(INITIAL_BLOCKCHAIN_EVENTS);
@@ -189,15 +219,17 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       createdAt: nowIso
     };
 
+    let reportId = `rep-${Date.now().toString().slice(-4)}`;
     try {
-      // Save report to Firestore and get the real document ID
-      const reportId = await createReport(newReport);
+      reportId = await createReport(newReport);
+    } catch (err) {
+      console.warn('[submitVulnerability] Firestore write skipped/failed, using local report ID:', err);
+    }
 
-      // Create the complete report with the real Firestore ID
-      const reportWithId: VulnerabilityReport = {
-        id: reportId,
-        ...newReport
-      };
+    const reportWithId: VulnerabilityReport = {
+      id: reportId,
+      ...newReport
+    };
 
       const proofHash = await sha256(JSON.stringify(newReport));
       const proofNonce = Date.now();
@@ -259,11 +291,6 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         verifiedAt: undefined,
         oracleVerifierVersion: 'trustx-verifier-1'
       }, ...prev]);
-
-    } catch (err) {
-      console.error('[submitVulnerability] Failed to create report in Firestore:', err);
-      throw err;
-    }
   };
 
   /**
