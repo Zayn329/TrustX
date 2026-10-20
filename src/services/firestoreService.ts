@@ -10,6 +10,7 @@ import {
   QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { Bounty, VulnerabilityReport } from '../domain/types';
+import type { OracleTargetId } from '../domain/oracleTargets';
 
 // Collection names
 const BOUNTIES_COLLECTION = 'bounties';
@@ -35,6 +36,7 @@ const bountyFromDoc = (docRef: QueryDocumentSnapshot): Bounty => {
     rules: data.rules,
     deadline: data.deadline,
     verificationRequirements: data.verificationRequirements,
+    oracleTargetId: data.oracleTargetId as OracleTargetId | undefined,
     status: data.status,
     escrowId: data.escrowId,
     escrowStatus: data.escrowStatus ?? '',
@@ -66,6 +68,7 @@ const bountyToFirestore = (bounty: Omit<Bounty, 'id'>) => {
     rules: bounty.rules,
     deadline: bounty.deadline,
     verificationRequirements: bounty.verificationRequirements,
+    ...(bounty.oracleTargetId ? { oracleTargetId: bounty.oracleTargetId } : {}),
     status: bounty.status,
     escrowId: bounty.escrowId,
     escrowStatus: bounty.escrowStatus,

@@ -26,7 +26,7 @@ import {
 import { getBounties, createBounty, updateBounty, getReports, createReport } from '../services/firestoreService';
 import { usdcToEth, generateOnChainIdFromFirestoreId, getDemoUsdcPerEth } from '../services/conversionService';
 import { useEscrowContract } from '../blockchain/useEscrowContract';
-import { runSandboxEvaluation } from '../../oracle/sandboxRunner';
+import { runSandboxEvaluation, SandboxExecutionResult } from '../../oracle/sandboxRunner';
 import { sha256 } from '../domain/cryptoUtils';
 import { useArbitrationStore } from './useArbitrationStore';
 
@@ -65,7 +65,7 @@ interface TrustContextType {
   fundEscrowError: string | null;
   // Functions
   submitVulnerability: (payload: NewSubmissionPayload) => Promise<void>;
-  verifySubmission: (reportId: string, isApproved?: boolean, notes?: string) => Promise<void>;
+  verifySubmission: (reportId: string, isApproved?: boolean, notes?: string) => Promise<SandboxExecutionResult | null>;
   raiseDispute: (reportId: string, reason: string, evidence: string) => Promise<void>;
   releaseEscrow: (bountyId: string, researcherAddress: string) => Promise<void>;
   openCreateBountyModal: () => void;
@@ -77,6 +77,7 @@ interface TrustContextType {
 const TrustContext = createContext<TrustContextType | undefined>(undefined);
 
 export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const oracleVerificationEnabled = import.meta.env.VITE_ORACLE_VERIFICATION_ENABLED === 'true';
   const [identities, setIdentities] = useState<Identity[]>(INITIAL_IDENTITIES);
   const [bounties, setBounties] = useState<Bounty[]>([]);
   const [reports, setReports] = useState<VulnerabilityReport[]>(() => {
@@ -284,12 +285,13 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setVerifications(prev => [{
         id: `verif-${reportId}`,
         contributionId: reportId,
-        verifierId: 'oracle-sandbox-v1',
-        verifierName: 'TrustX Automated PoC Verifier',
+        verifierId: oracleVerificationEnabled ? 'oracle-sandbox-v1' : 'manual-review',
+        verifierName: oracleVerificationEnabled ? 'TrustX Automated PoC Verifier' : 'Manual Review',
         status: 'pending',
-        notes: 'Awaiting oracle PoC verification run',
+        notes: oracleVerificationEnabled ? 'Awaiting oracle PoC verification run' : 'Awaiting manual review',
+        verificationSource: oracleVerificationEnabled ? 'oracle_runtime' : 'manual',
         verifiedAt: undefined,
-        oracleVerifierVersion: 'trustx-verifier-1'
+        ...(oracleVerificationEnabled ? { oracleVerifierVersion: 'trustx-verifier-1' } : {})
       }, ...prev]);
   };
 
@@ -303,28 +305,39 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const reportProof = proofs.find((proof) => proof.contributionId === report.id);
     const reportBounty = bounties.find((bounty) => bounty.id === report.bountyId);
-    const technicalResult = await runSandboxEvaluation({
-      reportId: report.id,
-      bountyId: report.bountyId,
-      scope: reportBounty?.scope,
-      reproductionSteps: report.reproductionSteps,
-      evidenceHash: reportProof?.contentHash
-    });
-    if (technicalResult.status === 'unavailable') {
-      throw new Error('Technical verifier is unavailable; submission remains unverified');
+    let technicalResult: SandboxExecutionResult | null = null;
+    if (oracleVerificationEnabled) {
+      technicalResult = await runSandboxEvaluation({
+        targetId: reportBounty?.oracleTargetId,
+        reportId: report.id,
+        bountyId: report.bountyId,
+        scope: reportBounty?.scope,
+        reproductionSteps: report.reproductionSteps,
+        evidenceHash: reportProof?.contentHash
+      });
+      if (technicalResult.status === 'unavailable') {
+        throw new Error('Technical verifier is unavailable; submission remains unverified');
+      }
     }
 
-    const technicallyApproved = technicalResult.status === 'passed';
-    const finalApproved = isApproved !== undefined ? isApproved : technicallyApproved;
+    const technicallyApproved = technicalResult?.status === 'passed';
+    const finalApproved = isApproved !== undefined ? isApproved : (oracleVerificationEnabled ? technicallyApproved : true);
+    const verificationSource = oracleVerificationEnabled
+      ? (technicalResult?.astStatus && technicalResult.astStatus !== 'not_run' ? 'oracle_runtime_ast' : 'oracle_runtime')
+      : 'manual';
+    const verifierId = oracleVerificationEnabled ? 'oracle-sandbox-v1' : 'manual-review';
+    const verifierName = oracleVerificationEnabled ? 'TrustX Automated PoC Verifier' : 'Manual Review';
 
-    if (isApproved !== undefined && technicallyApproved !== isApproved) {
-      throw new Error(`Verifier result is ${technicalResult.status}; manual decision does not match technical evidence`);
+    if (oracleVerificationEnabled && isApproved !== undefined && technicallyApproved !== isApproved) {
+      throw new Error(`Verifier result is ${technicalResult?.status}; manual decision does not match technical evidence`);
     }
 
     const verificationStatus = finalApproved ? 'valid' : 'invalid';
-    const resultNotes = notes || (finalApproved
-      ? `Verified successfully by TrustX PoC verifier (Coverage: ${technicalResult.coveragePercentage}%).`
-      : `Verification failed: ${technicalResult.vulnerabilityCategory}.`);
+    const resultNotes = notes || (oracleVerificationEnabled
+      ? (finalApproved
+        ? `Verified successfully by TrustX oracle (Coverage: ${technicalResult?.coveragePercentage ?? 0}%).`
+        : `Verification failed: ${technicalResult?.vulnerabilityCategory || 'Target condition was not reproduced'}.`)
+      : 'Marked valid through manual verification mode. No oracle execution was requested.');
 
     let reputationResult: Awaited<ReturnType<typeof updateReputationOnChain>> | null = null;
     if (finalApproved && wallet.isConnected && isWalletOnConfiguredChain()) {
@@ -345,11 +358,17 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 status: verificationStatus,
                 notes: resultNotes,
                 verifiedAt: nowIso,
-                oracleExecutionId: technicalResult.executionId,
-                oracleRequestHash: technicalResult.requestHash,
-                oracleEvidenceHash: technicalResult.evidenceHash,
-                oracleVerifierVersion: technicalResult.verifierVersion,
-                oracleStatus: technicalResult.status
+                oracleExecutionId: technicalResult?.executionId,
+                oracleRequestHash: technicalResult?.requestHash,
+                oracleEvidenceHash: technicalResult?.evidenceHash,
+                oracleVerifierVersion: technicalResult?.verifierVersion,
+                oracleStatus: technicalResult?.status,
+                verifierId,
+                verifierName,
+                verificationSource,
+                oracleTargetId: technicalResult?.targetId,
+                astAnalysisId: technicalResult?.sourceHash,
+                astStatus: technicalResult?.astStatus || 'not_run'
               }
             : v
         );
@@ -357,16 +376,20 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return [{
           id: `verif-${reportId}`,
           contributionId: reportId,
-          verifierId: 'oracle-sandbox-v1',
-          verifierName: 'TrustX Automated PoC Verifier',
+          verifierId,
+          verifierName,
           status: verificationStatus,
           notes: resultNotes,
           verifiedAt: nowIso,
-          oracleExecutionId: technicalResult.executionId,
-          oracleRequestHash: technicalResult.requestHash,
-          oracleEvidenceHash: technicalResult.evidenceHash,
-          oracleVerifierVersion: technicalResult.verifierVersion,
-          oracleStatus: technicalResult.status
+          oracleExecutionId: technicalResult?.executionId,
+          oracleRequestHash: technicalResult?.requestHash,
+          oracleEvidenceHash: technicalResult?.evidenceHash,
+          oracleVerifierVersion: technicalResult?.verifierVersion,
+          oracleStatus: technicalResult?.status,
+          verificationSource,
+          oracleTargetId: technicalResult?.targetId,
+          astAnalysisId: technicalResult?.sourceHash,
+          astStatus: technicalResult?.astStatus || 'not_run'
         }, ...prev];
       }
     });
@@ -415,6 +438,7 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }, ...prev]);
       }
     }
+    return technicalResult;
   };
 
   /**
@@ -550,6 +574,7 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       rules: [],
       deadline: '',
       verificationRequirements: [],
+      oracleTargetId: undefined,
       status: 'active' as const,
       escrowId: '',
       escrowStatus: '',
@@ -576,6 +601,7 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       rules: [],
       deadline: '',
       verificationRequirements: [],
+      oracleTargetId: undefined,
       status: 'active' as const,
       escrowId: '',
       escrowStatus: '',
@@ -604,6 +630,7 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       closeCreateBountyModal();
     } catch (err) {
       setCreateBountyError(err instanceof Error ? err.message : String(err));
+      throw err;
     } finally {
       setCreateBountyLoading(false);
     }

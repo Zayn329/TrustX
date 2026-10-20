@@ -25,6 +25,7 @@ describe('sandboxRunner (remote technical verifier)', () => {
       evidenceHash,
       bountyId,
       scope,
+      targetId: 'trustx-settlement-v1',
       targetVersion: 'trustx-settlement-v1',
       idempotencyKey
     }));
@@ -37,6 +38,7 @@ describe('sandboxRunner (remote technical verifier)', () => {
       reportId,
       bountyId,
       scope,
+      targetId: 'trustx-settlement-v1',
       requestHash,
       evidenceHash,
       status: 'passed',
@@ -47,6 +49,7 @@ describe('sandboxRunner (remote technical verifier)', () => {
       verifierVersion: 'trustx-verifier-1',
       targetVersion: 'trustx-settlement-v1',
       executionMode: 'isolated_remote_oracle',
+      astFindings: [],
       signingKeyId: 'default-ed25519',
       signature: 'AA==',
       publicKeySpkiBase64: 'AA=='
@@ -68,10 +71,11 @@ describe('sandboxRunner (remote technical verifier)', () => {
     vi.stubGlobal('fetch', vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ requestToken: 'request-token-123456789' }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
-      executionId: 'exec-tampered', reportId: 'rep-other', bountyId: 'bounty-test', scope: [], requestHash: '0xwrong', evidenceHash,
+      executionId: 'exec-tampered', reportId: 'rep-other', bountyId: 'bounty-test', scope: [], targetId: 'trustx-settlement-v1', requestHash: '0xwrong', evidenceHash,
       status: 'passed', coveragePercentage: 100, logs: [], vulnerabilityCategory: 'Tampered',
       executedAt: '2026-10-14T00:00:00.000Z', verifierVersion: 'trustx-verifier-1',
       targetVersion: 'trustx-settlement-v1', executionMode: 'isolated_remote_oracle',
+      astFindings: [],
       signingKeyId: 'default-ed25519', signature: 'AA==', publicKeySpkiBase64: 'AA=='
       }), { status: 200 })));
     await expect(runSandboxEvaluation({ reportId: 'rep-test', reproductionSteps: 'CALL deposit(1000)', evidenceHash })).rejects.toThrow(/bound to different evidence/);

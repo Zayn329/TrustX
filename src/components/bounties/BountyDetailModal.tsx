@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, ShieldCheck, Lock, DollarSign, Calendar, Send, Sparkles } from 'lucide-react';
 import { Bounty } from '../../domain/types';
+import { getOracleTargetLabel } from '../../domain/oracleTargets';
 import { useTrust } from '../../store/TrustContext';
 import { SubmitVulnerabilityModal } from './SubmitVulnerabilityModal';
 
@@ -98,6 +99,13 @@ export const BountyDetailModal: React.FC<BountyDetailModalProps> = ({ bounty, on
                     {item}
                   </span>
                 ))}
+              </div>
+            </div>
+
+            <div>
+              <h3 className="tx-kicker mb-2">Technical verification target</h3>
+              <div className="rounded-xl border border-indigo-500/20 bg-indigo-950/20 p-3 text-sm text-indigo-100">
+                {getOracleTargetLabel(bounty.oracleTargetId)}
               </div>
             </div>
 

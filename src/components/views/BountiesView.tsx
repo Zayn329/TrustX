@@ -7,7 +7,7 @@ import { CreateBountyModal } from '../bounties/CreateBountyModal';
 import { Bounty } from '../../domain/types';
 
 export const BountiesView: React.FC = () => {
-  const { bounties, createBountyModalOpen, openCreateBountyModal, closeCreateBountyModal } = useTrust();
+  const { bounties, createBountyModalOpen, openCreateBountyModal, closeCreateBountyModal, handleCreateBounty } = useTrust();
   const [selectedBounty, setSelectedBounty] = useState<Bounty | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [perspective, setPerspective] = useState<'researcher' | 'company'>('researcher');
@@ -257,6 +257,7 @@ export const BountiesView: React.FC = () => {
       <CreateBountyModal
         isOpen={createBountyModalOpen}
         onClose={closeCreateBountyModal}
+        onCreate={handleCreateBounty}
       />
     </div>
   );

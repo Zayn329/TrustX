@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { ArrowLeft, Check, ChevronDown, ChevronUp, Copy, FileKey2, ShieldCheck, UserRound, Sparkles, AlertCircle, FileSearch } from 'lucide-react';
 import { useTrust } from '../../store/TrustContext';
 import { ProofCard } from '../ui/ProofCard';
 import { VerificationTimeline, TimelineStage } from '../ui/VerificationTimeline';
 import { OracleVerificationBadge } from '../ui/OracleVerificationBadge';
 import { ProofDetailModal } from '../passport/ProofDetailModal';
-import { runSandboxEvaluation, SandboxExecutionResult } from '../../../oracle/sandboxRunner';
+import { SandboxExecutionResult } from '../../../oracle/sandboxRunner';
 import { useEscrowContract } from '../../blockchain/useEscrowContract';
 
 export const ExplorerView: React.FC = () => {
   const { reports, proofs, verifications, identities, bounties, escrows, verifySubmission, releaseEscrow } = useTrust();
   const { getWalletAddress } = useEscrowContract();
+  const oracleVerificationEnabled = import.meta.env.VITE_ORACLE_VERIFICATION_ENABLED === 'true';
   const [selectedReportId, setSelectedReportId] = useState<string>(reports[0]?.id || '');
   const [oracleResult, setOracleResult] = useState<SandboxExecutionResult | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
@@ -29,14 +30,6 @@ export const ExplorerView: React.FC = () => {
   const activeBounty = bounties.find(b => b.id === activeReport?.bountyId);
   const activeEscrow = activeBounty ? escrows.find(e => e.id === activeBounty.escrowId) : undefined;
 
-  useEffect(() => {
-    if (!activeReport) return;
-    const activeProofHash = proofs.find((proof) => proof.contributionId === activeReport.id)?.contentHash;
-    runSandboxEvaluation({ reportId: activeReport.id, bountyId: activeReport.bountyId, scope: activeBounty?.scope, reproductionSteps: activeReport.reproductionSteps, evidenceHash: activeProofHash })
-      .then(res => setOracleResult(res))
-      .catch(() => setOracleResult(null));
-  }, [activeReport, proofs]);
-
   const handleSelectReport = (id: string) => {
     setSelectedReportId(id);
     setVerifyError(null);
@@ -48,19 +41,12 @@ export const ExplorerView: React.FC = () => {
     setIsVerifying(true);
     setVerifyError(null);
     try {
-      await verifySubmission(activeReport.id);
-      const activeProofHash = proofs.find((proof) => proof.contributionId === activeReport.id)?.contentHash;
-      const res = await runSandboxEvaluation({
-        reportId: activeReport.id,
-        bountyId: activeReport.bountyId,
-        scope: activeBounty?.scope,
-        reproductionSteps: activeReport.reproductionSteps,
-        evidenceHash: activeProofHash
-      });
-      setOracleResult(res);
+      const result = await verifySubmission(activeReport.id);
+      setOracleResult(result);
     } catch (err) {
       console.error('[ExplorerView] Verification failed:', err);
-      setVerifyError(err instanceof Error ? err.message : String(err));
+      const message = err instanceof Error ? err.message : String(err);
+      setVerifyError(oracleVerificationEnabled ? `Oracle unavailable: ${message}` : message);
     } finally {
       setIsVerifying(false);
     }
@@ -119,13 +105,13 @@ export const ExplorerView: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><button onClick={() => { window.location.hash = '#dashboard'; }} className="mb-5 inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-200"><ArrowLeft className="h-3.5 w-3.5" /> Back to workspace</button><div className="tx-kicker text-blue-300/80">Trust investigation / evidence center</div><h1 className="tx-page-title mt-3">Contribution audit explorer</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Follow who acted, what they contributed, what proves it, and what happened after verification.</p></div><span className="status-pill status-success"><ShieldCheck className="mr-1.5 h-3.5 w-3.5" /> Evidence register</span></header>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><button onClick={() => { window.location.hash = '#dashboard'; }} className="mb-5 inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-200"><ArrowLeft className="h-3.5 w-3.5" /> Back to workspace</button><div className="tx-kicker text-blue-300/80">Trust investigation / evidence center</div><h1 className="tx-page-title mt-3">Contribution audit explorer</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Follow who acted, what they contributed, what proves it, and what happened after verification.</p></div><div className="flex flex-col items-start gap-2 sm:items-end"><span className="status-pill status-success"><ShieldCheck className="mr-1.5 h-3.5 w-3.5" /> Evidence register</span><span className="text-[11px] text-slate-500">{oracleVerificationEnabled ? 'Oracle verification enabled' : 'Manual verification mode'}</span></div></header>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="tx-surface h-fit rounded-2xl p-4 lg:sticky lg:top-28"><div className="flex items-center justify-between px-1"><div className="tx-kicker">Contributions</div><span className="font-mono text-[10px] text-slate-600">{reports.length} total</span></div><div className="mt-4 space-y-2">{reports.map(rep => { const ver = verifications.find(v => v.contributionId === rep.id); const isSelected = rep.id === activeReport.id; return <button key={rep.id} onClick={() => handleSelectReport(rep.id)} className={`w-full rounded-xl border p-3.5 text-left transition ${isSelected ? 'border-blue-300/30 bg-blue-400/10' : 'border-slate-700/40 bg-slate-950/35 hover:border-slate-500/60 hover:bg-slate-800/50'}`}><div className="flex items-center justify-between gap-2"><span className="font-mono text-[10px] font-semibold text-blue-200">{rep.id}</span><span className={`status-pill ${ver?.status === 'valid' ? 'status-success' : ver?.status === 'pending' ? 'status-warning' : 'status-critical'}`}>{ver?.status || 'pending'}</span></div><div className="mt-3 line-clamp-2 text-xs font-medium leading-5 text-slate-200">{rep.title}</div></button>; })}</div></aside>
 
         <main ref={detailPanelRef} className="min-w-0 space-y-5">
-          <section className="tx-surface-raised rounded-2xl p-6 sm:p-8"><div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between"><div className="min-w-0"><div className="tx-kicker">Selected contribution / {activeReport.id}</div><h2 className="mt-3 max-w-3xl text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl">{activeReport.title}</h2><div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-400"><span className="inline-flex items-center gap-1.5"><UserRound className="h-3.5 w-3.5 text-blue-300" /> {activeResearcher?.name || 'Researcher'}</span><span className="font-mono text-slate-600">{activeResearcher?.id}</span></div></div><div className="flex shrink-0 flex-col items-start gap-2 lg:items-end"><div className="flex flex-wrap items-center gap-2"><span className={`status-pill ${activeVerification?.status === 'valid' ? 'status-success' : activeVerification?.status === 'pending' ? 'status-warning' : 'status-critical'}`}>{activeVerification?.status || 'pending'} verification</span><button onClick={handleTriggerVerification} disabled={isVerifying} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 transition-all shadow-md shadow-indigo-600/20"><Sparkles className="w-3.5 h-3.5 text-blue-200" /><span>{isVerifying ? 'Running Verifier...' : 'Trigger Oracle Verification'}</span></button><button onClick={() => setIsProofModalOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-cyan-300 bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-500/30 transition-all shadow-sm"><FileSearch className="w-3.5 h-3.5 text-cyan-400" /><span>Inspect Proof & Evidence Hash</span></button></div>{verifyError && <div className="text-[11px] text-rose-400 flex items-center gap-1"><AlertCircle className="w-3 h-3 flex-shrink-0" /><span>{verifyError}</span></div>}<span className="text-xs text-slate-500">{activeProof ? 'Proof available' : 'Proof generating'}</span></div></div><div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-700/40 bg-slate-700/40 sm:grid-cols-4"><div className="bg-slate-950/65 p-4"><div className="tx-kicker">Severity</div><div className="mt-2 text-sm font-semibold text-rose-200">{activeReport.severity}</div></div><div className="bg-slate-950/65 p-4"><div className="tx-kicker">Proof state</div><div className="mt-2 text-sm font-semibold text-emerald-300">{activeProof?.proofStatus === 'anchored_on_chain' ? 'Anchored' : 'Generated'}</div></div><div className="bg-slate-950/65 p-4"><div className="tx-kicker">Verifier</div><div className="mt-2 truncate text-sm font-semibold text-slate-200">{activeVerification?.verifierName || 'Pending assignment'}</div></div><div className="bg-slate-950/65 p-4"><div className="tx-kicker">Outcome</div><div className="mt-2 text-sm font-semibold text-cyan-200">{activeVerification?.status !== 'valid' ? 'Under review' : activeEscrow?.status === 'released' ? 'Escrow released' : 'Verified; payout pending'}</div></div></div></section>
+          <section className="tx-surface-raised rounded-2xl p-6 sm:p-8"><div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between"><div className="min-w-0"><div className="tx-kicker">Selected contribution / {activeReport.id}</div><h2 className="mt-3 max-w-3xl text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl">{activeReport.title}</h2><div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-400"><span className="inline-flex items-center gap-1.5"><UserRound className="h-3.5 w-3.5 text-blue-300" /> {activeResearcher?.name || 'Researcher'}</span><span className="font-mono text-slate-600">{activeResearcher?.id}</span></div></div><div className="flex shrink-0 flex-col items-start gap-2 lg:items-end"><div className="flex flex-wrap items-center gap-2"><span className={`status-pill ${activeVerification?.status === 'valid' ? 'status-success' : activeVerification?.status === 'pending' ? 'status-warning' : 'status-critical'}`}>{activeVerification?.status || 'pending'} verification</span><button onClick={handleTriggerVerification} disabled={isVerifying} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 transition-all shadow-md shadow-indigo-600/20"><Sparkles className="w-3.5 h-3.5 text-blue-200" /><span>{isVerifying ? (oracleVerificationEnabled ? 'Running Verifier...' : 'Saving Review...') : (oracleVerificationEnabled ? 'Run Oracle Verification' : 'Mark Manual Review')}</span></button><button onClick={() => setIsProofModalOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-cyan-300 bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-500/30 transition-all shadow-sm"><FileSearch className="w-3.5 h-3.5 text-cyan-400" /><span>Inspect Proof & Evidence Hash</span></button></div>{verifyError && <div className="text-[11px] text-rose-400 flex items-center gap-1"><AlertCircle className="w-3 h-3 flex-shrink-0" /><span>{verifyError}</span></div>}<span className="text-xs text-slate-500">{activeProof ? 'Proof available' : 'Proof generating'}</span></div></div><div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-700/40 bg-slate-700/40 sm:grid-cols-4"><div className="bg-slate-950/65 p-4"><div className="tx-kicker">Severity</div><div className="mt-2 text-sm font-semibold text-rose-200">{activeReport.severity}</div></div><div className="bg-slate-950/65 p-4"><div className="tx-kicker">Proof state</div><div className="mt-2 text-sm font-semibold text-emerald-300">{activeProof?.proofStatus === 'anchored_on_chain' ? 'Anchored' : 'Generated'}</div></div><div className="bg-slate-950/65 p-4"><div className="tx-kicker">Verifier</div><div className="mt-2 truncate text-sm font-semibold text-slate-200">{activeVerification?.verifierName || 'Pending assignment'}</div></div><div className="bg-slate-950/65 p-4"><div className="tx-kicker">Outcome</div><div className="mt-2 text-sm font-semibold text-cyan-200">{activeVerification?.status !== 'valid' ? 'Under review' : activeEscrow?.status === 'released' ? 'Escrow released' : 'Verified; payout pending'}</div></div></div></section>
 
           <VerificationTimeline currentStage={lifecycleStage} statusLabel={lifecycleStatusLabel} />
 
@@ -143,9 +129,9 @@ export const ExplorerView: React.FC = () => {
             <section className="tx-surface rounded-2xl p-6 sm:p-7">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <div className="tx-kicker">Verifier action</div>
-                  <h3 className="mt-2 text-lg font-semibold text-white">Review this contribution</h3>
-                  <p className="mt-1 text-sm text-slate-400">For this demo, clicking verify directly attempts to release the bounty escrow to the researcher. No oracle service is used.</p>
+                  <div className="tx-kicker text-emerald-300">Escrow action</div>
+                  <h3 className="mt-2 text-lg font-semibold text-white">Release approved escrow</h3>
+                  <p className="mt-1 text-sm text-slate-400">Technical verification and escrow release are separate actions. This button sends the authorized company wallet transaction; it does not run the oracle.</p>
                 </div>
                 <button
                   type="button"
@@ -154,7 +140,7 @@ export const ExplorerView: React.FC = () => {
                   className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ShieldCheck className="h-4 w-4" />
-                  {isVerifying ? 'Releasing escrow…' : 'Verify & Release Escrow'}
+                  {isVerifying ? 'Releasing escrow…' : 'Release Escrow'}
                 </button>
               </div>
               {verificationError && <p role="alert" className="mt-4 rounded-lg border border-rose-400/20 bg-rose-400/10 p-3 text-sm text-rose-200">{verificationError}</p>}

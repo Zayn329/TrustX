@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { X, Plus, AlertTriangle, Loader2 } from 'lucide-react';
 import { Bounty, SeverityLevel } from '../../domain/types';
-import { createBounty } from '../../services/firestoreService';
+import { ORACLE_TARGET_OPTIONS } from '../../domain/oracleTargets';
 
 interface CreateBountyModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreate: (formData: Omit<Bounty, 'id'>) => Promise<void>;
 }
 
-export const CreateBountyModal: React.FC<CreateBountyModalProps> = ({ isOpen, onClose }) => {
+export const CreateBountyModal: React.FC<CreateBountyModalProps> = ({ isOpen, onClose, onCreate }) => {
   const [form, setForm] = useState<Omit<Bounty, 'id'>>({
     title: '',
     organizationId: '',
@@ -21,6 +22,7 @@ export const CreateBountyModal: React.FC<CreateBountyModalProps> = ({ isOpen, on
     rules: [],
     deadline: '',
     verificationRequirements: [],
+    oracleTargetId: undefined,
     status: 'active' as const,
     escrowId: '',
     escrowStatus: '',
@@ -91,7 +93,7 @@ export const CreateBountyModal: React.FC<CreateBountyModalProps> = ({ isOpen, on
     }
 
     try {
-      await createBounty(form);
+      await onCreate({ ...form, oracleTargetId: form.oracleTargetId || undefined });
       onClose();
       // Reset form after successful submission
       setForm({
@@ -106,6 +108,7 @@ export const CreateBountyModal: React.FC<CreateBountyModalProps> = ({ isOpen, on
         rules: [],
         deadline: '',
         verificationRequirements: [],
+        oracleTargetId: undefined,
         status: 'active' as const,
         escrowId: '',
         escrowStatus: '',
@@ -291,6 +294,22 @@ export const CreateBountyModal: React.FC<CreateBountyModalProps> = ({ isOpen, on
                 className="w-full bg-slate-950/70 border border-slate-700/50 rounded-xl pl-3 pr-4 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 h-20"
                 placeholder="Enter verification requirements, one per line"
               />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-200 mb-1" htmlFor="oracle-target">Technical verification target</label>
+              <select
+                id="oracle-target"
+                value={form.oracleTargetId || ''}
+                onChange={e => setForm(prev => ({ ...prev, oracleTargetId: e.target.value ? e.target.value as Bounty['oracleTargetId'] : undefined }))}
+                className="w-full bg-slate-950/70 border border-slate-700/50 rounded-xl pl-3 pr-4 py-2 text-slate-200 focus:outline-none focus:border-indigo-500"
+              >
+                <option value="">Manual review / no automated target</option>
+                {ORACLE_TARGET_OPTIONS.map(target => (
+                  <option key={target.id} value={target.id}>{target.label}</option>
+                ))}
+              </select>
+              <p className="text-[11px] leading-5 text-slate-500">Choose a pinned TrustX fixture. This target is saved with the bounty and determines which oracle test runs for its reports.</p>
             </div>
 
             <div className="space-y-2">

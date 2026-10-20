@@ -1,3 +1,5 @@
+import type { OracleTargetId } from './oracleTargets';
+
 export type IdentityRole = 'researcher' | 'organization' | 'verifier';
 
 export interface ScoreBreakdownFactors {
@@ -38,6 +40,7 @@ export interface Bounty {
   rules: string[];
   deadline: string;
   verificationRequirements: string[];
+  oracleTargetId?: OracleTargetId;
   status: 'active' | 'in_review' | 'resolved' | 'closed';
   escrowId: string;
   escrowStatus: 'funded' | 'locked' | 'released' | 'disputed' | '';
@@ -88,6 +91,10 @@ export interface Verification {
   oracleEvidenceHash?: string;
   oracleVerifierVersion?: string;
   oracleStatus?: 'passed' | 'failed' | 'rejected' | 'unavailable';
+  verificationSource?: 'manual' | 'oracle_runtime' | 'oracle_runtime_ast';
+  oracleTargetId?: string;
+  astAnalysisId?: string;
+  astStatus?: 'passed' | 'failed' | 'not_run' | 'unavailable';
 }
 
 export interface ReputationEvent {

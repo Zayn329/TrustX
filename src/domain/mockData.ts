@@ -139,6 +139,7 @@ export const INITIAL_BOUNTIES: Bounty[] = [
       'Proof-of-discovery hash anchored on-chain',
       'Reproducible HTTP flow payload'
     ],
+    oracleTargetId: 'trustx-login-sqli-v1',
     status: 'active',
     escrowId: 'escrow-102',
     escrowStatus: '',
@@ -184,6 +185,19 @@ export const INITIAL_REPORTS: VulnerabilityReport[] = [
     impact: 'Potential drain of locked liquidity pool funds under high frequency execution.',
     evidence: 'Calculated SHA-256 string for code PoC: 0xa8f391c49e...',
     createdAt: '2025-02-10T11:15:00Z'
+  },
+  {
+    id: 'rep-8802',
+    bountyId: 'bounty-102',
+    researcherId: 'did:trust:0x71c89a42e12b',
+    title: 'Authentication bypass in login target fixture',
+    vulnerabilityType: 'SQL Injection',
+    severity: 'High',
+    description: 'Unsafe SQL construction allows crafted login input to reach an admin-only page.',
+    reproductionSteps: 'POST /login\nusername=admin%27%20--\npassword=anything\nGET /admin',
+    impact: 'An unauthenticated user can access protected administrative data.',
+    evidence: 'Login fixture runtime trace and AST finding.',
+    createdAt: '2025-02-11T11:15:00Z'
   }
 ];
 
