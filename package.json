@@ -13,7 +13,11 @@
     "contracts:deploy:sepolia": "hardhat run scripts/deploy-sepolia.cjs --network sepolia",
     "contracts:check:sepolia": "node scripts/check-sepolia.cjs",
     "oracle:server": "node oracle/server.cjs",
+    "oracle:server:env": "node --env-file=.env oracle/server.cjs",
+    "oracle:login:demo": "python oracle/login_fixture.py --serve --port 8788",
+    "oracle:login:demo:fixed": "python oracle/login_fixture.py --serve --fixed --port 8788",
     "oracle:check": "node scripts/check-oracle.cjs",
+    "oracle:login:check": "node scripts/check-login-oracle.cjs",
     "oracle:persistence:check": "node scripts/check-oracle-persistence.cjs",
     "oracle:keys": "node scripts/generate-oracle-keys.cjs"
   },

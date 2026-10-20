@@ -3,6 +3,7 @@ import { sha256 } from '../src/domain/cryptoUtils';
 export type OracleStatus = 'passed' | 'failed' | 'rejected' | 'unavailable';
 
 export interface SandboxEvaluationRequest {
+  targetId?: string;
   reportId?: string;
   bountyId?: string;
   scope?: string[];
@@ -29,6 +30,17 @@ export interface SandboxExecutionResult {
   signingKeyId: string;
   signature: string;
   publicKeySpkiBase64: string;
+  targetId?: string;
+  sourceHash?: string;
+  astStatus?: 'passed' | 'failed' | 'not_run' | 'unavailable';
+  astFindings?: Array<{ ruleId: string; severity: string; file: string; line: number; explanation: string; status?: string; aiStatus?: 'available' | 'unavailable'; aiProvider?: string; aiModel?: string; aiExplanation?: string }>;
+  aiStatus?: 'available' | 'unavailable';
+  runtimeStatus?: OracleStatus;
+  securityRule?: string;
+  vulnerabilityReproduced?: boolean;
+  protectedResourceReached?: boolean;
+  requestTrace?: string[];
+  responseStatuses?: number[];
 }
 
 type UnsignedSandboxExecutionResult = Omit<SandboxExecutionResult, 'signature' | 'publicKeySpkiBase64'>;
@@ -38,13 +50,14 @@ function base64ToBytes(value: string): Uint8Array {
   return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
 
-function canonicalRequest(request: Required<Pick<SandboxEvaluationRequest, 'reportId' | 'reproductionSteps' | 'evidenceHash' | 'idempotencyKey' | 'bountyId' | 'scope'>> & { targetVersion: string }) {
+function canonicalRequest(request: Required<Pick<SandboxEvaluationRequest, 'reportId' | 'reproductionSteps' | 'evidenceHash' | 'idempotencyKey' | 'bountyId' | 'scope'>> & { targetId: string; targetVersion: string }) {
   return JSON.stringify({
     reportId: request.reportId,
     reproductionSteps: request.reproductionSteps,
     evidenceHash: request.evidenceHash,
     bountyId: request.bountyId,
     scope: request.scope,
+    targetId: request.targetId,
     targetVersion: request.targetVersion,
     idempotencyKey: request.idempotencyKey
   });
@@ -60,6 +73,7 @@ async function verifySignature(result: SandboxExecutionResult, configuredPublicK
     reportId: result.reportId,
     bountyId: result.bountyId,
     scope: result.scope,
+    targetId: result.targetId,
     requestHash: result.requestHash,
     evidenceHash: result.evidenceHash,
     status: result.status,
@@ -70,7 +84,17 @@ async function verifySignature(result: SandboxExecutionResult, configuredPublicK
     verifierVersion: result.verifierVersion,
     targetVersion: result.targetVersion,
     executionMode: result.executionMode,
-    signingKeyId: result.signingKeyId
+    signingKeyId: result.signingKeyId,
+    sourceHash: result.sourceHash,
+    astStatus: result.astStatus,
+    astFindings: result.astFindings,
+    aiStatus: result.aiStatus,
+    runtimeStatus: result.runtimeStatus,
+    securityRule: result.securityRule,
+    vulnerabilityReproduced: result.vulnerabilityReproduced,
+    protectedResourceReached: result.protectedResourceReached,
+    requestTrace: result.requestTrace,
+    responseStatuses: result.responseStatuses
   };
   const key = await crypto.subtle.importKey('spki', base64ToBytes(publicKeySpkiBase64).buffer as ArrayBuffer, { name: 'Ed25519' } as AlgorithmIdentifier, false, ['verify']);
   const valid = await crypto.subtle.verify({ name: 'Ed25519' } as AlgorithmIdentifier, key, base64ToBytes(result.signature).buffer as ArrayBuffer, new TextEncoder().encode(JSON.stringify(unsigned)));
@@ -79,6 +103,7 @@ async function verifySignature(result: SandboxExecutionResult, configuredPublicK
 
 export async function runSandboxEvaluation(input: string | SandboxEvaluationRequest): Promise<SandboxExecutionResult> {
   const request: SandboxEvaluationRequest = typeof input === 'string' ? { reproductionSteps: input } : input;
+  const targetId = request.targetId || 'trustx-settlement-v1';
   const reportId = request.reportId || 'unassigned-report';
   const bountyId = request.bountyId || 'unassigned-bounty';
   const scope = request.scope || [];
@@ -100,26 +125,28 @@ export async function runSandboxEvaluation(input: string | SandboxEvaluationRequ
   const response = await fetch(`${serviceUrl}/evaluate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-TrustX-Request-Token': session.requestToken },
-    body: JSON.stringify({ reportId, bountyId, scope, reproductionSteps: request.reproductionSteps, evidenceHash, idempotencyKey }),
+    body: JSON.stringify({ targetId, reportId, bountyId, scope, reproductionSteps: request.reproductionSteps, evidenceHash, idempotencyKey }),
     signal: AbortSignal.timeout(6000)
   });
   if (!response.ok) throw new Error(`Technical verifier returned HTTP ${response.status}`);
 
   const result = await response.json() as Partial<SandboxExecutionResult>;
   if (
-    typeof result.executionId !== 'string' || typeof result.reportId !== 'string' || typeof result.bountyId !== 'string' || !Array.isArray(result.scope) ||
+    typeof result.executionId !== 'string' || typeof result.reportId !== 'string' || typeof result.bountyId !== 'string' || typeof result.targetId !== 'string' || !Array.isArray(result.scope) ||
     typeof result.requestHash !== 'string' || typeof result.evidenceHash !== 'string' ||
     !['passed', 'failed', 'rejected', 'unavailable'].includes(result.status || '') ||
     typeof result.coveragePercentage !== 'number' || !Array.isArray(result.logs) ||
     typeof result.vulnerabilityCategory !== 'string' || typeof result.executedAt !== 'string' ||
     typeof result.verifierVersion !== 'string' || typeof result.targetVersion !== 'string' ||
     result.executionMode !== 'isolated_remote_oracle' || typeof result.signingKeyId !== 'string' ||
-    typeof result.signature !== 'string' || typeof result.publicKeySpkiBase64 !== 'string'
+    typeof result.signature !== 'string' || typeof result.publicKeySpkiBase64 !== 'string' || !Array.isArray(result.astFindings)
   ) throw new Error('Technical verifier returned an invalid result');
 
   const typedResult = result as SandboxExecutionResult;
-  const expectedRequestHash = await sha256(canonicalRequest({ reportId, bountyId, scope, reproductionSteps: request.reproductionSteps, evidenceHash, idempotencyKey, targetVersion: 'trustx-settlement-v1' }));
-  if (typedResult.reportId !== reportId || typedResult.bountyId !== bountyId || JSON.stringify(typedResult.scope) !== JSON.stringify(scope) || typedResult.evidenceHash !== evidenceHash || typedResult.requestHash !== expectedRequestHash) {
+  const expectedRequestHash = await sha256(canonicalRequest({ reportId, bountyId, scope, reproductionSteps: request.reproductionSteps, evidenceHash, idempotencyKey, targetId, targetVersion: targetId }));
+  if (typedResult.reportId !== reportId || typedResult.bountyId !== bountyId || typedResult.targetId !== targetId || typedResult.targetVersion !== targetId ||
+      (typedResult.sourceHash !== undefined && !/^0x[0-9a-f]{64}$/i.test(typedResult.sourceHash)) ||
+      JSON.stringify(typedResult.scope) !== JSON.stringify(scope) || typedResult.evidenceHash !== evidenceHash || typedResult.requestHash !== expectedRequestHash) {
     throw new Error('Technical verifier result is bound to different evidence');
   }
   const configuredPublicKey = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_ORACLE_SIGNING_PUBLIC_KEY;

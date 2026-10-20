@@ -116,7 +116,7 @@ The protocol distinguishes between **Cryptographic Provenance** and **Technical 
    - *Result*: Timestamped, indisputable proof of discovery anchored on-chain that prevents front-running.
 
 2. **Technical Vulnerability Verification (Post-Submission)**:
-   - Security reviewers and AI/ML static analyzers execute the restricted reproduction format through the remote verifier gateway and worker (`oracle/server.cjs`, `oracle/worker.cjs`).
+   - Security reviewers and optional AI-assisted static analyzers use the remote verifier gateway and worker (`oracle/server.cjs`, `oracle/worker.cjs`) to analyze a pinned target and run a controlled reproduction.
    - Once verified, the funding company explicitly triggers the receipt-confirmed escrow release.
    - The approving wallet submits the receipt-confirmed `ReputationRegistry` update; credential issuance remains a separate application layer.
 
@@ -143,7 +143,7 @@ The protocol distinguishes between **Cryptographic Provenance** and **Technical 
 ### 4. Contribution Explorer (`ExplorerView.tsx`)
 * **Audit Trail Inspector**: End-to-end lineage visualization:
   $$\text{Identity (DID)} \longrightarrow \text{Contribution} \longrightarrow \text{SHA-256 Proof} \longrightarrow \text{Technical Verification} \longrightarrow \text{Ledger Anchor} \longrightarrow \text{Escrow Payout}$$
-* **Oracle Execution Badge (`OracleVerificationBadge.tsx`)**: Displays execution logs from the isolated Foundry/Docker sandbox runner, coverage percentage ($94.2\%$), and pass/fail status.
+* **Oracle Execution Badge (`OracleVerificationBadge.tsx`)**: Displays the signed target-aware runtime result, AST findings, request trace, and pass/fail status. A runtime pass means the submitted vulnerability reproduction reached the protected resource; it is not a universal security guarantee.
 * **Proof Card (`ProofCard.tsx`)**: Displays cryptographic proof comparison (Client SHA-256 hash vs On-chain anchored hash).
 
 ### 5. Interactive SVG Trust Graph (`GraphView.tsx`)
@@ -173,8 +173,9 @@ The platform incorporates three distinct AI/ML and AI engineering pipelines:
 ```
 
 1. **Automated PoC Triage Engine (`oracle/server.cjs` + `oracle/worker.cjs`)**:
-   - Executes only allowlisted declarative reproduction operations against the pinned TrustX demo fixture.
-   - Reports measured fixture operation coverage and structured execution logs; it does not infer validity from text length or keywords.
+   - Supports the existing settlement fixture and the pinned `trustx-login-sqli-v1` login target. The login target is a separate local SQLite HTTP application with vulnerable and fixed versions.
+   - For the login target, the worker checks valid login, invalid login, anonymous admin access, and an allowlisted SQL-injection reproduction. A runtime result is based on HTTP responses and protected-resource access, not keywords alone.
+   - A deterministic Python AST rule reports unsafe SQL concatenation before runtime testing. Optional server-side AI only explains that finding; it cannot decide validity, reputation, or escrow release.
 
 2. **Sybil & Fraud Detection Engine (`NetworkComponents.tsx`)**:
    - Analyzes cross-account payload similarity and DID submission velocity.
@@ -315,7 +316,11 @@ To deploy **Trust Engine** to a live Ethereum testnet/mainnet environment, execu
 3. Run `npm run oracle:keys` once to generate a stable Ed25519 signing key pair. Keep `ORACLE_SIGNING_PRIVATE_KEY_PEM` server-side and pin the printed SPKI public key in `VITE_ORACLE_SIGNING_PUBLIC_KEY`.
 4. Use `npm run oracle:check` to verify the signed execution, request-token authentication, idempotency, and unsafe-input rejection path.
 
-The verifier accepts only the restricted declarative demo format (`CALL deposit(...)`, `CALL flashLoan(...)`, and `CALL settlement(...)`). It executes the target fixture in a separate child process, returns measured fixture coverage, binds the response to the report/evidence hash, and signs the result. A `passed` result is technical evidence only; reputation and company-authorized escrow release remain separate operations.
+The verifier accepts target-aware restricted formats. The settlement target supports the existing declarative operations (`CALL deposit(...)`, `CALL flashLoan(...)`, and `CALL settlement(...)`). The login target accepts only the allowlisted HTTP sequence (`POST /login`, encoded username/password fields, then `GET /admin`). It executes the pinned target in a separate worker, returns structured AST and runtime evidence, binds the response to the report/evidence/target hash, and signs the result. A `passed` login result means the submitted vulnerability was reproduced; reputation and company-authorized escrow release remain separate operations.
+
+Set `VITE_ORACLE_VERIFICATION_ENABLED=true` to require the signed oracle path. The default is `false`, which preserves the manual/legacy verification path and labels it as manual review. Technical verification and escrow release are separate actions.
+
+The optional AI explanation layer uses Groq's OpenAI-compatible chat endpoint. Set `ORACLE_AI_ENABLED=true`, `ORACLE_AI_PROVIDER=groq`, either `ORACLE_AI_API_KEY` or `GROQ_API_KEY` server-side, and choose an active Groq model in `ORACLE_AI_MODEL`, then start the gateway with `npm run oracle:server:env` so Node loads the project `.env` file. Groq only explains deterministic AST findings; it cannot approve a report, change runtime verification, update reputation, or release escrow. If Groq is unavailable or returns an invalid response, deterministic AST and runtime verification continue and the result is marked `aiStatus: unavailable`.
 
 ---
 

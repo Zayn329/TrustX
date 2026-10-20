@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const { spawn } = require('node:child_process');
 const path = require('node:path');
+const { explainFinding } = require('./aiExplainer.cjs');
 
 const PORT = Number(process.env.ORACLE_PORT || 8787);
 const MAX_BODY_BYTES = 32 * 1024;
@@ -48,6 +49,8 @@ const publicKeySpkiBase64 = publicKey.export({ type: 'spki', format: 'der' }).to
 function hashJson(value) {
   return `0x${crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex')}`;
 }
+
+const SUPPORTED_TARGETS = new Set(['trustx-settlement-v1', 'trustx-login-sqli-v1', 'trustx-login-sqli-fixed-v1']);
 
 function sendJson(response, status, body) {
   response.writeHead(status, {
@@ -126,6 +129,8 @@ function runWorker(payload) {
 }
 
 async function evaluate(body) {
+  const targetId = body.targetId || 'trustx-settlement-v1';
+  if (typeof targetId !== 'string' || !SUPPORTED_TARGETS.has(targetId)) throw new Error('Unsupported targetId');
   if (typeof body.reportId !== 'string' || body.reportId.length > 128) throw new Error('Invalid reportId');
   if (typeof body.bountyId !== 'string' || body.bountyId.length > 128) throw new Error('Invalid bountyId');
   if (!Array.isArray(body.scope) || body.scope.some((item) => typeof item !== 'string' || item.length > 256)) throw new Error('Invalid scope');
@@ -139,7 +144,8 @@ async function evaluate(body) {
     evidenceHash: body.evidenceHash,
     bountyId: body.bountyId,
     scope: body.scope,
-    targetVersion: 'trustx-settlement-v1',
+    targetId,
+    targetVersion: targetId,
     idempotencyKey: body.idempotencyKey
   };
   const requestHash = hashJson(request);
@@ -148,11 +154,22 @@ async function evaluate(body) {
 
   const executionId = `exec-${crypto.randomUUID()}`;
   const workerResult = await runWorker(request);
+  const astFindings = Array.isArray(workerResult.astFindings) ? await Promise.all(workerResult.astFindings.map(async (finding) => {
+    const explanation = await explainFinding(finding);
+    return {
+      ...finding,
+      aiStatus: explanation.status,
+      aiProvider: explanation.provider,
+      aiModel: explanation.model,
+      aiExplanation: explanation.explanation
+    };
+  })) : [];
   const unsigned = {
     executionId,
     reportId: request.reportId,
     bountyId: request.bountyId,
     scope: request.scope,
+    targetId: request.targetId,
     requestHash,
     evidenceHash: request.evidenceHash,
     status: workerResult.status,
@@ -163,7 +180,17 @@ async function evaluate(body) {
     verifierVersion: VERIFIER_VERSION,
     targetVersion: request.targetVersion,
     executionMode: 'isolated_remote_oracle',
-    signingKeyId: 'default-ed25519'
+    signingKeyId: 'default-ed25519',
+    sourceHash: workerResult.sourceHash,
+    astStatus: workerResult.astStatus || 'not_run',
+    astFindings,
+    aiStatus: astFindings.some((finding) => finding.aiStatus === 'available') ? 'available' : 'unavailable',
+    runtimeStatus: workerResult.runtimeStatus || workerResult.status,
+    securityRule: workerResult.securityRule || 'Target-specific security rule was evaluated.',
+    vulnerabilityReproduced: Boolean(workerResult.vulnerabilityReproduced),
+    protectedResourceReached: Boolean(workerResult.protectedResourceReached),
+    requestTrace: workerResult.requestTrace || [],
+    responseStatuses: workerResult.responseStatuses || []
   };
   const signature = crypto.sign(null, Buffer.from(JSON.stringify(unsigned)), keyPair).toString('base64');
   const result = { ...unsigned, signature, publicKeySpkiBase64 };
