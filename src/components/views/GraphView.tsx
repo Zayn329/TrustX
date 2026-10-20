@@ -55,57 +55,83 @@ export const GraphView: React.FC = () => {
   // Dynamic Graph Nodes derived directly from Trust Layer state
   const nodes: Node[] = [];
 
+  // Position identities in a vertical cluster with some spread
   identities.forEach((id, idx) => {
+    // Spread identities vertically with better spacing and slight horizontal variation
+    const baseX = 150;
+    const baseY = 150 + idx * 120;
+    const spreadX = Math.sin(idx * 0.5) * 20; // slight horizontal wave
+
     nodes.push({
       id: id.id,
       label: id.name || id.handle,
       type: 'identity',
-      x: 90,
-      y: 90 + idx * 110,
+      x: baseX + spreadX,
+      y: baseY,
       details: `DID: ${id.id} • Trust Score: ${id.trustScore}/100 • Verified Claims: ${id.verifiedContributionsCount} • Earned: $${id.totalRewardsEarned}`
     });
   });
 
+  // Position bounties in a vertical cluster
   bounties.forEach((b, idx) => {
+    const baseX = 350;
+    const baseY = 150 + idx * 120;
+    const spreadX = Math.sin(idx * 0.5 + 1) * 20; // offset wave
+
     nodes.push({
       id: b.id,
       label: b.title.length > 20 ? b.title.slice(0, 18) + '...' : b.title,
       type: 'bounty',
-      x: 270,
-      y: 80 + idx * 110,
+      x: baseX + spreadX,
+      y: baseY,
       details: `Bounty ID: ${b.id} • Reward: $${b.rewardAmount} ${b.rewardCurrency} • Severity: ${b.severity} • Org: ${b.organizationName}`
     });
   });
 
+  // Position reports/contributions in a vertical cluster
   reports.forEach((r, idx) => {
+    const baseX = 550;
+    const baseY = 150 + idx * 100; // slightly tighter spacing for reports
+    const spreadX = Math.sin(idx * 0.5 + 2) * 15;
+
     nodes.push({
       id: r.id,
       label: r.title.length > 18 ? r.title.slice(0, 16) + '...' : r.title,
       type: 'contribution',
-      x: 450,
-      y: 70 + idx * 85,
+      x: baseX + spreadX,
+      y: baseY,
       details: `Report ID: ${r.id} • Type: ${r.vulnerabilityType} • Severity: ${r.severity} • Researcher: ${r.researcherId}`
     });
   });
 
+  // Position proofs in a vertical cluster
   proofs.forEach((p, idx) => {
+    const baseX = 750;
+    const baseY = 150 + idx * 100;
+    const spreadX = Math.sin(idx * 0.5 + 3) * 15;
+
     nodes.push({
       id: p.id,
       label: `Proof ${p.contentHash.slice(0, 6)}...`,
       type: 'proof',
-      x: 630,
-      y: 70 + idx * 85,
+      x: baseX + spreadX,
+      y: baseY,
       details: `Proof ID: ${p.id} • SHA-256 Hash: ${p.contentHash} • Status: ${p.proofStatus} • Signature: ${p.signature.slice(0, 24)}...`
     });
   });
 
+  // Position escrows in a vertical cluster
   escrows.forEach((e, idx) => {
+    const baseX = 950;
+    const baseY = 150 + idx * 120;
+    const spreadX = Math.sin(idx * 0.5 + 4) * 20;
+
     nodes.push({
       id: e.id,
       label: `Escrow ($${e.amount})`,
       type: 'escrow',
-      x: 810,
-      y: 90 + idx * 110,
+      x: baseX + spreadX,
+      y: baseY,
       details: `Escrow ID: ${e.id} • Contract: ${e.escrowContractAddress} • Amount: $${e.amount} ${e.currency} • Status: ${e.status}`
     });
   });
@@ -264,7 +290,7 @@ export const GraphView: React.FC = () => {
         <div className="lg:col-span-3 tx-surface rounded-[1.75rem] p-4 relative overflow-hidden flex flex-col items-center justify-center min-h-[460px] shadow-sm">
           <svg
             id="trust-graph-svg"
-            viewBox="0 0 900 440"
+            viewBox="0 0 1200 1000"
             className="w-full h-full max-h-[460px] transition-transform duration-300"
             style={{ transform: `scale(${zoomLevel})` }}
           >

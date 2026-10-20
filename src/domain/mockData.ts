@@ -34,7 +34,7 @@ export const INITIAL_IDENTITIES: Identity[] = [
   {
     id: 'did:trust:0x39b10f8812c4',
     handle: 'sarah_sec',
-    name: 'Sarah Chen',
+    name: 'Patel Hamza',
     role: 'researcher',
     trustScore: 88,
     verifiedContributionsCount: 11,
@@ -53,7 +53,7 @@ export const INITIAL_IDENTITIES: Identity[] = [
   {
     id: 'did:trust:0xorg_nexus_pay',
     handle: 'nexus_financial',
-    name: 'Nexus Financial Inc.',
+    name: 'Pawle Company',
     role: 'organization',
     trustScore: 98,
     verifiedContributionsCount: 42,
@@ -72,7 +72,7 @@ export const INITIAL_IDENTITIES: Identity[] = [
   {
     id: 'did:trust:0xorg_cloud_vault',
     handle: 'cloudvault_io',
-    name: 'CloudVault Infrastructure',
+    name: 'PH Company',
     role: 'organization',
     trustScore: 96,
     verifiedContributionsCount: 29,

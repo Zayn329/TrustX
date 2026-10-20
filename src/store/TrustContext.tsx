@@ -472,13 +472,21 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (!/^\d+$/.test(bounty.escrowId)) {
       throw new Error('A confirmed on-chain escrow ID is required before release');
     }
+
+    // Never submit a second payout when local state already says it was released.
+    if (bounty.escrowStatus === 'released') {
+      throw new Error('This bounty is already marked released. Refresh its Firestore record instead of sending another payout.');
+    }
     if (bounty.escrowStatus !== 'funded' && bounty.escrowStatus !== 'locked') {
-      throw new Error('Escrow is not eligible for release');
+      throw new Error(`Escrow status is '${bounty.escrowStatus || 'unset'}', so a new payout was not submitted. If a release transaction already succeeded, synchronize its confirmed transaction with Firestore first.`);
     }
 
+    // The on-chain function returns only after a successful receipt and EscrowReleased event.
     const result = await releaseEscrowOnChain(bounty.escrowId, researcherAddress);
     const nowIso = new Date().toISOString();
 
+    // Persist first. If this fails, surface the confirmed transaction hash so the
+    // database can be repaired without attempting another on-chain payout.
     try {
       await updateBounty(bounty.id, {
         escrowStatus: 'released',
@@ -486,15 +494,34 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         fundingTxHash: bounty.fundingTxHash
       });
     } catch (error) {
-      console.warn('Escrow release confirmed on-chain but projection sync failed:', error);
+      console.error('[releaseEscrow] On-chain release confirmed but Firestore update failed', {
+        bountyId: bounty.id,
+        escrowId: result.escrowId,
+        releaseTxHash: result.txHash,
+        error
+      });
+      throw new Error(`Escrow release succeeded on-chain, but Firestore could not save the released status. Do not retry the payout. Transaction: ${result.txHash}. Database error: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     setBounties((prev) => prev.map((item) => item.id === bounty.id
       ? { ...item, escrowStatus: 'released', escrowId: result.escrowId }
       : item));
-    setEscrows((prev) => prev.map((item) => item.id === result.escrowId
-      ? { ...item, status: 'released', researcherAddress: result.researcher }
-      : item));
+    setEscrows((prev) => {
+      const existing = prev.some((item) => item.id === result.escrowId || item.bountyId === bounty.id);
+      const releasedEscrow = {
+        id: result.escrowId,
+        bountyId: bounty.id,
+        amount: Number(result.amount) / 1e18,
+        currency: 'ETH',
+        status: 'released' as const,
+        companyAddress: prev.find((item) => item.id === result.escrowId || item.bountyId === bounty.id)?.companyAddress || '',
+        escrowContractAddress: import.meta.env.VITE_TRUST_BOUNTY_ESCROW_ADDRESS || '',
+        researcherAddress: result.researcher
+      };
+      return existing
+        ? prev.map((item) => item.id === result.escrowId || item.bountyId === bounty.id ? { ...item, ...releasedEscrow } : item)
+        : [releasedEscrow, ...prev];
+    });
     setBlockchainEvents((prev) => [{
       id: `${result.txHash}:0`,
       eventType: 'EscrowReleased',
