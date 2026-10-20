@@ -71,6 +71,7 @@ interface TrustContextType {
   openCreateBountyModal: () => void;
   closeCreateBountyModal: () => void;
   handleCreateBounty: (formData: Omit<Bounty, 'id'>) => Promise<void>;
+  refreshReports: () => Promise<void>;
   fundEscrow: (bountyId: string) => Promise<void>;
 }
 
@@ -628,6 +629,12 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
+  /** Re-reads the reports this account is authorized to see (e.g. after a review decision). */
+  const refreshReports = async () => {
+    if (!user || !role) return;
+    setReports(await getAuthorizedReports(user.uid, role));
+  };
+
   const fundEscrow = async (bountyId: string) => {
     const nowIso = new Date().toISOString();
     setFundEscrowLoading(true);
@@ -792,6 +799,7 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         createBountyError,
         openCreateBountyModal,
         closeCreateBountyModal,
+        refreshReports,
         handleCreateBounty,
         fundEscrowLoading,
         fundEscrowError,
