@@ -138,6 +138,9 @@ export const createBounty = async (bounty: Omit<Bounty, 'id'>): Promise<string> 
     throw new Error('Firestore is not initialized. Check Firebase configuration.');
   }
 
+  if (!bounty.companyId) {
+    throw new Error('Cannot create a program without a companyId (signed-in company UID).');
+  }
   const bountyCol = collection(db, BOUNTIES_COLLECTION);
   const docRef = await addDoc(bountyCol, bountyToFirestore(bounty));
   return docRef.id;
