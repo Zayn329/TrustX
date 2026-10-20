@@ -13,7 +13,6 @@ import {
 } from '../domain/types';
 import {
   INITIAL_IDENTITIES,
-  INITIAL_BOUNTIES,
   INITIAL_ESCROWS,
   INITIAL_REPORTS,
   INITIAL_PROOFS,
@@ -23,10 +22,11 @@ import {
   INITIAL_DISPUTES,
   INITIAL_SYBIL_RISK
 } from '../domain/mockData';
-import { getBounties, createBounty, updateBounty, getReports, createReport } from '../services/firestoreService';
+import { getAuthorizedBounties, createBounty, updateBounty, getAuthorizedReports, createReport } from '../services/firestoreService';
+import { useAuth } from '../auth/AuthContext';
 import { usdcToEth, generateOnChainIdFromFirestoreId, getDemoUsdcPerEth } from '../services/conversionService';
 import { useEscrowContract } from '../blockchain/useEscrowContract';
-import { runSandboxEvaluation } from '../../oracle/sandboxRunner';
+import { runSandboxEvaluation, SandboxExecutionResult } from '../../oracle/sandboxRunner';
 import { sha256 } from '../domain/cryptoUtils';
 import { useArbitrationStore } from './useArbitrationStore';
 
@@ -65,7 +65,7 @@ interface TrustContextType {
   fundEscrowError: string | null;
   // Functions
   submitVulnerability: (payload: NewSubmissionPayload) => Promise<void>;
-  verifySubmission: (reportId: string, isApproved: boolean, notes: string) => Promise<void>;
+  verifySubmission: (reportId: string, isApproved?: boolean, notes?: string) => Promise<SandboxExecutionResult | null>;
   raiseDispute: (reportId: string, reason: string, evidence: string) => Promise<void>;
   releaseEscrow: (bountyId: string, researcherAddress: string) => Promise<void>;
   openCreateBountyModal: () => void;
@@ -77,11 +77,43 @@ interface TrustContextType {
 const TrustContext = createContext<TrustContextType | undefined>(undefined);
 
 export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { user, role, profile } = useAuth();
+  const oracleVerificationEnabled = import.meta.env.VITE_ORACLE_VERIFICATION_ENABLED === 'true';
   const [identities, setIdentities] = useState<Identity[]>(INITIAL_IDENTITIES);
   const [bounties, setBounties] = useState<Bounty[]>([]);
-  const [reports, setReports] = useState<VulnerabilityReport[]>(INITIAL_REPORTS);
+  const [reports, setReports] = useState<VulnerabilityReport[]>(() => {
+    try {
+      const saved = localStorage.getItem('trustx_persisted_reports');
+      return saved ? JSON.parse(saved) : INITIAL_REPORTS;
+    } catch {
+      return INITIAL_REPORTS;
+    }
+  });
   const [proofs, setProofs] = useState<Proof[]>(INITIAL_PROOFS);
-  const [verifications, setVerifications] = useState<Verification[]>(INITIAL_VERIFICATIONS);
+  const [verifications, setVerifications] = useState<Verification[]>(() => {
+    try {
+      const saved = localStorage.getItem('trustx_persisted_verifications');
+      return saved ? JSON.parse(saved) : INITIAL_VERIFICATIONS;
+    } catch {
+      return INITIAL_VERIFICATIONS;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('trustx_persisted_reports', JSON.stringify(reports));
+    } catch (err) {
+      console.warn('Failed to persist reports to localStorage', err);
+    }
+  }, [reports]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('trustx_persisted_verifications', JSON.stringify(verifications));
+    } catch (err) {
+      console.warn('Failed to persist verifications to localStorage', err);
+    }
+  }, [verifications]);
   const [reputationEvents, setReputationEvents] = useState<ReputationEvent[]>(INITIAL_REPUTATION_EVENTS);
   const [escrows, setEscrows] = useState<Escrow[]>(INITIAL_ESCROWS);
   const [blockchainEvents, setBlockchainEvents] = useState<BlockchainEvent[]>(INITIAL_BLOCKCHAIN_EVENTS);
@@ -129,40 +161,40 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   } = useEscrowContract();
   const { createArbitrationCase } = useArbitrationStore();
 
-  const currentResearcher = identities[0];
+  const currentResearcher = identities.find((identity) => identity.id === user?.uid) || identities[0];
 
   // Load bounties from Firestore on mount
   useEffect(() => {
     const loadBounties = async () => {
       try {
-        const fetchedBounties = await getBounties();
+        if (!user || !role) return;
+        const fetchedBounties = await getAuthorizedBounties(user.uid, role);
         console.log('[TrustContext] Loaded bounties from Firestore:', fetchedBounties.length);
         console.log('[TrustContext] Loaded bounty IDs:', fetchedBounties.map(b => b.id));
         setBounties(fetchedBounties);
       } catch (err) {
         console.error('[TrustContext] Failed to load bounties from Firestore, falling back to mock data:', err);
-        // Fallback to mock data
-        setBounties(INITIAL_BOUNTIES);
+        setBounties([]);
       }
     };
 
     // Load reports from Firestore on mount
     const loadReports = async () => {
       try {
-        const fetchedReports = await getReports();
+        if (!user || !role) return;
+        const fetchedReports = await getAuthorizedReports(user.uid, role);
         console.log('[TrustContext] Loaded reports from Firestore:', fetchedReports.length);
         console.log('[TrustContext] Loaded report IDs:', fetchedReports.map(r => r.id));
         setReports(fetchedReports);
       } catch (err) {
         console.error('[TrustContext] Failed to load reports from Firestore, falling back to mock data:', err);
-        // Fallback to mock data
-        setReports(INITIAL_REPORTS);
+        setReports([]);
       }
     };
 
     loadBounties();
     loadReports();
-  }, []);
+  }, [role, user]);
 
   /**
    * Registers a vulnerability submission via Firestore persistence.
@@ -170,15 +202,20 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
    */
   const submitVulnerability = async (payload: NewSubmissionPayload) => {
     // Validate payload
-    if (!payload.bountyId || !payload.researcherId || !payload.title.trim()) {
+    if (!user || role !== 'researcher' || !payload.bountyId || !payload.title.trim()) {
       throw new Error('Invalid submission payload');
     }
+    const bounty = bounties.find((item) => item.id === payload.bountyId);
+    if (!bounty?.companyId) throw new Error('This program is not available for report submission.');
 
     // Create report object with auto-generated ID to be replaced by Firestore
     const nowIso = new Date().toISOString();
+    const evidenceHash = await sha256(payload.evidence);
     const newReport: Omit<VulnerabilityReport, 'id'> = {
+      companyId: bounty.companyId,
+      status: 'submitted',
       bountyId: payload.bountyId,
-      researcherId: payload.researcherId,
+      researcherId: user.uid,
       title: payload.title,
       vulnerabilityType: payload.vulnerabilityType,
       severity: payload.severity,
@@ -186,34 +223,55 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       reproductionSteps: payload.reproductionSteps,
       impact: payload.impact,
       evidence: payload.evidence,
+      evidenceHash,
       createdAt: nowIso
     };
 
-    try {
-      // Save report to Firestore and get the real document ID
-      const reportId = await createReport(newReport);
+    const reportId = await createReport(newReport);
 
-      // Create the complete report with the real Firestore ID
-      const reportWithId: VulnerabilityReport = {
-        id: reportId,
-        ...newReport
-      };
+    const reportWithId: VulnerabilityReport = {
+      id: reportId,
+      ...newReport
+    };
 
       const proofHash = await sha256(JSON.stringify(newReport));
       const proofNonce = Date.now();
-      const signature = await signTypedDataProof({
-        researcherDid: payload.researcherId,
-        bountyId: generateOnChainIdFromFirestoreId(payload.bountyId),
-        proofHash,
-        nonce: proofNonce
-      });
-      const anchor = await anchorProofOnChain(
-        generateOnChainIdFromFirestoreId(payload.bountyId),
-        proofHash,
-        payload.researcherId,
-        signature,
-        proofNonce
-      );
+      let signature = '0x';
+      let proofStatus: 'generated' | 'anchored_on_chain' = 'generated';
+      let proofSource: 'receipt' | 'seeded_demo' = 'seeded_demo';
+
+      if (wallet.isConnected && isWalletOnConfiguredChain()) {
+        try {
+          signature = await signTypedDataProof({
+            researcherDid: user.uid,
+            bountyId: generateOnChainIdFromFirestoreId(payload.bountyId),
+            proofHash,
+            nonce: proofNonce
+          });
+          const anchor = await anchorProofOnChain(
+            generateOnChainIdFromFirestoreId(payload.bountyId),
+            proofHash,
+            user.uid,
+            signature,
+            proofNonce
+          );
+          proofStatus = 'anchored_on_chain';
+          proofSource = 'receipt';
+          setBlockchainEvents(prev => [{
+            id: `${anchor.txHash}:0`,
+            eventType: 'ProofAnchored',
+            txHash: anchor.txHash,
+            blockNumber: Number(anchor.blockNumber),
+            timestamp: nowIso,
+            actor: anchor.signer,
+            status: 'confirmed',
+            source: 'receipt',
+            details: `Proof ${anchor.proofHash} anchored for bounty ${anchor.bountyId}.`
+          }, ...prev]);
+        } catch (err) {
+          console.warn('[submitVulnerability] Wallet signature or anchoring skipped/failed:', err);
+        }
+      }
 
       setReports(prev => [reportWithId, ...prev]);
       setProofs(prev => [{
@@ -222,60 +280,112 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         contentHash: proofHash,
         signature,
         timestamp: nowIso,
-        proofStatus: 'anchored_on_chain',
-        source: 'receipt'
-      }, ...prev]);
-      setBlockchainEvents(prev => [{
-        id: `${anchor.txHash}:0`,
-        eventType: 'ProofAnchored',
-        txHash: anchor.txHash,
-        blockNumber: Number(anchor.blockNumber),
-        timestamp: nowIso,
-        actor: anchor.signer,
-        status: 'confirmed',
-        source: 'receipt',
-        details: `Proof ${anchor.proofHash} anchored for bounty ${anchor.bountyId}.`
+        proofStatus,
+        source: proofSource
       }, ...prev]);
 
-    } catch (err) {
-      console.error('[submitVulnerability] Failed to create report in Firestore:', err);
-      throw err;
-    }
   };
 
   /**
    * Verifies submission on-chain, updating portable reputation and releasing escrow funds.
    */
-  const verifySubmission = async (reportId: string, isApproved: boolean, notes: string) => {
+  const verifySubmission = async (reportId: string, isApproved?: boolean, notes?: string) => {
     const nowIso = new Date().toISOString();
     const report = reports.find(r => r.id === reportId);
-    if (!report) return;
+    if (!report) throw new Error('Report not found');
 
-    const technicalResult = await runSandboxEvaluation(report.reproductionSteps);
-    const technicallyApproved = technicalResult.status === 'passed';
-    if (technicallyApproved !== isApproved) {
-      throw new Error(`Verifier result is ${technicalResult.status}; manual decision does not match technical evidence`);
+    const reportProof = proofs.find((proof) => proof.contributionId === report.id);
+    const reportBounty = bounties.find((bounty) => bounty.id === report.bountyId);
+    let technicalResult: SandboxExecutionResult | null = null;
+    if (oracleVerificationEnabled) {
+      technicalResult = await runSandboxEvaluation({
+        targetId: reportBounty?.oracleTargetId,
+        reportId: report.id,
+        bountyId: report.bountyId,
+        scope: reportBounty?.scope,
+        reproductionSteps: report.reproductionSteps,
+        evidenceHash: reportProof?.contentHash
+      });
+      if (technicalResult.status === 'unavailable') {
+        throw new Error('Technical verifier is unavailable; submission remains unverified');
+      }
     }
+
+    const technicallyApproved = technicalResult?.status === 'passed';
+    const finalApproved = isApproved !== undefined ? isApproved : (oracleVerificationEnabled ? technicallyApproved : true);
+    const verificationSource = oracleVerificationEnabled
+      ? (technicalResult?.astStatus && technicalResult.astStatus !== 'not_run' ? 'oracle_runtime_ast' : 'oracle_runtime')
+      : 'manual';
+    const verifierId = oracleVerificationEnabled ? 'oracle-sandbox-v1' : 'manual-review';
+    const verifierName = oracleVerificationEnabled ? 'TrustX Automated PoC Verifier' : 'Manual Review';
+
+    if (oracleVerificationEnabled && isApproved !== undefined && technicallyApproved !== isApproved) {
+      throw new Error(`Verifier result is ${technicalResult?.status}; manual decision does not match technical evidence`);
+    }
+
+    const verificationStatus = finalApproved ? 'valid' : 'invalid';
+    const resultNotes = notes || (oracleVerificationEnabled
+      ? (finalApproved
+        ? `Verified successfully by TrustX oracle (Coverage: ${technicalResult?.coveragePercentage ?? 0}%).`
+        : `Verification failed: ${technicalResult?.vulnerabilityCategory || 'Target condition was not reproduced'}.`)
+      : 'Marked valid through manual verification mode. No oracle execution was requested.');
 
     let reputationResult: Awaited<ReturnType<typeof updateReputationOnChain>> | null = null;
-    if (isApproved) {
-      reputationResult = await updateReputationOnChain(report.researcherId, 3);
+    if (finalApproved && wallet.isConnected && isWalletOnConfiguredChain()) {
+      try {
+        reputationResult = await updateReputationOnChain(report.researcherId, 3);
+      } catch (err) {
+        console.warn('[verifySubmission] On-chain reputation update skipped/failed:', err);
+      }
     }
 
-    setVerifications(prev =>
-      prev.map(v =>
-        v.contributionId === reportId
-          ? {
-              ...v,
-              status: isApproved ? 'valid' : 'invalid',
-              notes,
-              verifiedAt: nowIso
-            }
-          : v
-      )
-    );
+    setVerifications(prev => {
+      const exists = prev.some(v => v.contributionId === reportId);
+      if (exists) {
+        return prev.map(v =>
+          v.contributionId === reportId
+            ? {
+                ...v,
+                status: verificationStatus,
+                notes: resultNotes,
+                verifiedAt: nowIso,
+                oracleExecutionId: technicalResult?.executionId,
+                oracleRequestHash: technicalResult?.requestHash,
+                oracleEvidenceHash: technicalResult?.evidenceHash,
+                oracleVerifierVersion: technicalResult?.verifierVersion,
+                oracleStatus: technicalResult?.status,
+                verifierId,
+                verifierName,
+                verificationSource,
+                oracleTargetId: technicalResult?.targetId,
+                astAnalysisId: technicalResult?.sourceHash,
+                astStatus: technicalResult?.astStatus || 'not_run'
+              }
+            : v
+        );
+      } else {
+        return [{
+          id: `verif-${reportId}`,
+          contributionId: reportId,
+          verifierId,
+          verifierName,
+          status: verificationStatus,
+          notes: resultNotes,
+          verifiedAt: nowIso,
+          oracleExecutionId: technicalResult?.executionId,
+          oracleRequestHash: technicalResult?.requestHash,
+          oracleEvidenceHash: technicalResult?.evidenceHash,
+          oracleVerifierVersion: technicalResult?.verifierVersion,
+          oracleStatus: technicalResult?.status,
+          verificationSource,
+          oracleTargetId: technicalResult?.targetId,
+          astAnalysisId: technicalResult?.sourceHash,
+          astStatus: technicalResult?.astStatus || 'not_run'
+        }, ...prev];
+      }
+    });
 
-    if (isApproved) {
+    if (finalApproved) {
       const bounty = bounties.find(b => b.id === report.bountyId);
       setIdentities(prev =>
         prev.map(id => {
@@ -319,6 +429,7 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }, ...prev]);
       }
     }
+    return technicalResult;
   };
 
   /**
@@ -454,6 +565,7 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       rules: [],
       deadline: '',
       verificationRequirements: [],
+      oracleTargetId: undefined,
       status: 'active' as const,
       escrowId: '',
       escrowStatus: '',
@@ -480,6 +592,7 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       rules: [],
       deadline: '',
       verificationRequirements: [],
+      oracleTargetId: undefined,
       status: 'active' as const,
       escrowId: '',
       escrowStatus: '',
@@ -495,10 +608,11 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setCreateBountyLoading(true);
     setCreateBountyError(null);
     try {
-      await createBounty(formData);
+      if (!user || role !== 'company') throw new Error('Only an authorized company can create a program.');
+      await createBounty({ ...formData, companyId: user.uid, organizationId: user.uid, organizationName: profile?.companyName || profile?.displayName || formData.organizationName });
       // Refetch bounties to get the newly created one
       try {
-        const freshBounties = await getBounties();
+        const freshBounties = await getAuthorizedBounties(user.uid, 'company');
         setBounties(freshBounties);
       } catch (fetchErr) {
         // Error fetching bounties after creation, but we still created the bounty.
@@ -508,6 +622,7 @@ export const TrustProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       closeCreateBountyModal();
     } catch (err) {
       setCreateBountyError(err instanceof Error ? err.message : String(err));
+      throw err;
     } finally {
       setCreateBountyLoading(false);
     }

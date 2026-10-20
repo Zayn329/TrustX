@@ -5,12 +5,13 @@ import { BountyCard } from '../bounties/BountyCard';
 import { BountyDetailModal } from '../bounties/BountyDetailModal';
 import { CreateBountyModal } from '../bounties/CreateBountyModal';
 import { Bounty } from '../../domain/types';
+import { useAuth } from '../../auth/AuthContext';
 
 export const BountiesView: React.FC = () => {
-  const { bounties, createBountyModalOpen, openCreateBountyModal, closeCreateBountyModal } = useTrust();
+  const { bounties, createBountyModalOpen, openCreateBountyModal, closeCreateBountyModal, handleCreateBounty } = useTrust();
+  const { role, user } = useAuth();
   const [selectedBounty, setSelectedBounty] = useState<Bounty | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const [perspective, setPerspective] = useState<'researcher' | 'company'>('researcher');
 
   // Category A Item 7: Filter State Memory with sessionStorage
   const [searchTerm, setSearchTerm] = useState(() => sessionStorage.getItem('bounty_search') || '');
@@ -31,7 +32,8 @@ export const BountiesView: React.FC = () => {
     sessionStorage.removeItem('bounty_severity');
   };
 
-  const filteredBounties = bounties.filter(bounty => {
+  const authorizedBounties = role === 'company' ? bounties.filter((bounty) => bounty.organizationId === user?.uid) : bounties;
+  const filteredBounties = authorizedBounties.filter(bounty => {
     const matchesSearch =
       bounty.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       bounty.organizationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -125,6 +127,7 @@ export const BountiesView: React.FC = () => {
           {/* Add Bounty Button */}
           <button
             onClick={openCreateBountyModal}
+            hidden={role !== 'company'}
             className="ml-2 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-all shadow-lg shadow-indigo-600/20"
           >
             <Plus className="w-4 h-4 mr-1" />
@@ -133,35 +136,10 @@ export const BountiesView: React.FC = () => {
         </div>
       </div>
 
-      {/* Perspective Selector */}
-      <div className="flex items-center gap-4 pt-2">
-        <span className="text-xs text-slate-500">Perspective:</span>
-        <button
-          onClick={() => setPerspective('researcher')}
-          className={`px-3 py-1 rounded transition-all ${
-            perspective === 'researcher'
-              ? 'bg-blue-400 text-slate-950'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          Researcher View
-        </button>
-        <button
-          onClick={() => setPerspective('company')}
-          className={`px-3 py-1 rounded transition-all ${
-            perspective === 'company'
-              ? 'bg-blue-400 text-slate-950'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          Company View
-        </button>
-      </div>
-
       {/* Count Summary & Filter Pills */}
       <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 border-y border-slate-800/60 py-4 gap-2">
         <div className="font-semibold text-slate-300">
-          Showing <span className="text-blue-300 font-bold">{filteredBounties.length}</span> of {bounties.length} active opportunities
+          Showing <span className="text-blue-300 font-bold">{filteredBounties.length}</span> of {authorizedBounties.length} {role === 'company' ? 'authorized programs' : 'active opportunities'}
         </div>
 
         {(searchTerm !== '' || selectedSeverity !== 'all') && (
@@ -191,7 +169,7 @@ export const BountiesView: React.FC = () => {
               key={bounty.id}
               bounty={bounty}
               onSelect={b => setSelectedBounty(b)}
-              perspective={perspective}
+              perspective={role === 'company' ? 'company' : 'researcher'}
             />
           ))}
         </div>
@@ -257,6 +235,7 @@ export const BountiesView: React.FC = () => {
       <CreateBountyModal
         isOpen={createBountyModalOpen}
         onClose={closeCreateBountyModal}
+        onCreate={handleCreateBounty}
       />
     </div>
   );

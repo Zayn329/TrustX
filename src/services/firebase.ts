@@ -1,4 +1,6 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
+import { getAuth, type Auth } from 'firebase/auth';
+import { getFunctions, type Functions } from 'firebase/functions';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 
 // Firebase configuration from Vite environment variables
@@ -30,6 +32,8 @@ for (const varName of requiredEnvVars) {
 // Initialize Firebase only if all required variables are present
 let app: FirebaseApp | null = null;
 let db: Firestore | null = null;
+let auth: Auth | null = null;
+let functions: Functions | null = null;
 
 if (typeof window !== 'undefined') {
   // Check if all required environment variables are present (not empty strings)
@@ -40,10 +44,12 @@ if (typeof window !== 'undefined') {
   if (allPresent) {
     app = initializeApp(firebaseConfig);
     db = getFirestore(app);
+    auth = getAuth(app);
+    functions = getFunctions(app);
   } else {
     console.warn('Firebase initialization skipped due to missing environment variables.');
   }
 }
 
-export { app, db };
-export type { FirebaseApp, Firestore };
+export { app, auth, db, functions };
+export type { Auth, FirebaseApp, Firestore, Functions };

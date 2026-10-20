@@ -1,14 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, KeyRound, Wallet, Search, UserCheck, ChevronDown } from 'lucide-react';
+import { ShieldCheck, KeyRound, Wallet, Search, UserCheck, ChevronDown, LogOut } from 'lucide-react';
 import { useTrust } from '../../store/TrustContext';
+import { useAuth } from '../../auth/AuthContext';
 import { WalletModal } from '../blockchain/WalletModal';
 
 interface HeaderProps {
   onOpenCommandPalette?: () => void;
+  onNavigate?: (tab: 'passport') => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenCommandPalette }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenCommandPalette, onNavigate }) => {
   const { currentResearcher } = useTrust();
+  const { profile, role, logout } = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
+  const isCompany = role === 'company';
+  const displayName = profile?.companyName || profile?.displayName || currentResearcher.name;
+  const signOut = async () => {
+    setSigningOut(true);
+    try { await logout(); } finally { setSigningOut(false); setIsProfileDropdownOpen(false); }
+  };
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
@@ -77,12 +87,14 @@ export const Header: React.FC<HeaderProps> = ({ onOpenCommandPalette }) => {
               >
                 <KeyRound className="w-4 h-4 text-indigo-400 flex-shrink-0" />
                 <div className="hidden md:block">
-                  <div className="text-xs font-semibold text-slate-200 leading-tight">{currentResearcher.name}</div>
-                  <div className="text-[10px] font-mono text-slate-300">{currentResearcher.id.slice(0, 14)}...</div>
+                  <div className="text-xs font-semibold text-slate-200 leading-tight">{displayName}</div>
+                  <div className="text-[10px] text-slate-400">{isCompany ? 'Company' : 'Bug Reporter'}</div>
                 </div>
-                <div className="bg-emerald-500/10 text-emerald-400 text-xs px-2 py-0.5 rounded border border-emerald-500/20 font-bold">
-                  {currentResearcher.trustScore}
-                </div>
+                {!isCompany && (
+                  <div className="bg-emerald-500/10 text-emerald-400 text-xs px-2 py-0.5 rounded border border-emerald-500/20 font-bold">
+                    {currentResearcher.trustScore}
+                  </div>
+                )}
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </button>
 
@@ -93,34 +105,47 @@ export const Header: React.FC<HeaderProps> = ({ onOpenCommandPalette }) => {
                       <UserCheck className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="font-bold text-xs text-slate-100">{currentResearcher.name}</div>
-                      <div className="text-[10px] font-mono text-slate-400 break-all">{currentResearcher.id}</div>
+                      <div className="font-bold text-xs text-slate-100">{displayName}</div>
+                      <div className="text-[10px] text-slate-400">Role is verified by your server session.</div>
                     </div>
                   </div>
 
-                  <div className="space-y-1.5 text-xs text-slate-300">
-                    <div className="flex justify-between py-1 border-b border-slate-800/80">
-                      <span className="text-slate-400">Trust Score:</span>
-                      <span className="font-bold text-emerald-400">{currentResearcher.trustScore} / 100</span>
-                    </div>
-                    <div className="flex justify-between py-1 border-b border-slate-800/80">
-                      <span className="text-slate-400">Acceptance Rate:</span>
-                      <span className="font-semibold text-slate-200">{currentResearcher.acceptanceRate}%</span>
-                    </div>
-                    <div className="flex justify-between py-1">
-                      <span className="text-slate-400">Rewards Earned:</span>
-                      <span className="font-bold text-amber-400">${currentResearcher.totalRewardsEarned.toLocaleString()}</span>
-                    </div>
-                  </div>
+                  {!isCompany && (
+                    <>
+                      <div className="space-y-1.5 text-xs text-slate-300">
+                        <div className="flex justify-between py-1 border-b border-slate-800/80">
+                          <span className="text-slate-400">Trust Score:</span>
+                          <span className="font-bold text-emerald-400">{currentResearcher.trustScore} / 100</span>
+                        </div>
+                        <div className="flex justify-between py-1 border-b border-slate-800/80">
+                          <span className="text-slate-400">Acceptance Rate:</span>
+                          <span className="font-semibold text-slate-200">{currentResearcher.acceptanceRate}%</span>
+                        </div>
+                        <div className="flex justify-between py-1">
+                          <span className="text-slate-400">Rewards Earned:</span>
+                          <span className="font-bold text-amber-400">${currentResearcher.totalRewardsEarned.toLocaleString()}</span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          onNavigate?.('passport');
+                          setIsProfileDropdownOpen(false);
+                        }}
+                        className="w-full text-center py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-lg transition-all"
+                      >
+                        View Full Trust Passport
+                      </button>
+                    </>
+                  )}
 
                   <button
-                    onClick={() => {
-                      window.location.hash = '#passport';
-                      setIsProfileDropdownOpen(false);
-                    }}
-                    className="w-full text-center py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-lg transition-all"
+                    disabled={signingOut}
+                    onClick={signOut}
+                    className="w-full flex items-center justify-center gap-2 py-2 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-xs font-semibold rounded-lg transition-all disabled:opacity-60"
                   >
-                    View Full Trust Passport
+                    <LogOut className="w-4 h-4" />
+                    {signingOut ? 'Signing out…' : 'Sign out'}
                   </button>
                 </div>
               )}

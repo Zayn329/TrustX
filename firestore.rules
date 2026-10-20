@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isCompany() { return signedIn() && request.auth.token.role == 'company'; }
+    function isResearcher() { return signedIn() && request.auth.token.role == 'researcher'; }
+    function ownsCompany(companyId) { return isCompany() && request.auth.uid == companyId; }
+    function ownsReport(data) { return signedIn() && (data.researcherId == request.auth.uid || data.companyId == request.auth.uid); }
+
+    match /users/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
+    }
+
+    match /bounties/{bountyId} {
+      allow get, list: if signedIn() && (resource.data.status == 'active' || ownsCompany(resource.data.companyId));
+      allow create: if ownsCompany(request.resource.data.companyId)
+        && request.resource.data.organizationId == request.auth.uid;
+      allow update: if ownsCompany(resource.data.companyId)
+        && request.resource.data.companyId == resource.data.companyId
+        && request.resource.data.organizationId == resource.data.organizationId;
+      allow delete: if ownsCompany(resource.data.companyId);
+    }
+
+    match /reports/{reportId} {
+      allow get, list: if ownsReport(resource.data);
+      allow create: if isResearcher()
+        && request.resource.data.researcherId == request.auth.uid
+        && request.resource.data.companyId == get(/databases/$(database)/documents/bounties/$(request.resource.data.bountyId)).data.companyId
+        && get(/databases/$(database)/documents/bounties/$(request.resource.data.bountyId)).data.status == 'active';
+      // Review decisions and oracle evidence are Functions-only. Researchers cannot alter a submitted report.
+      allow update, delete: if false;
+    }
+
+    match /verifications/{reportId} {
+      allow get, list: if ownsReport(get(/databases/$(database)/documents/reports/$(reportId)).data);
+      allow write: if false;
+    }
+  }
+}

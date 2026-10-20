@@ -1,60 +1,20 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
 import App from '../App';
 
-describe('Trust Engine UI Integration & Navigation', () => {
-  it('renders application header and default Dashboard view', () => {
-    render(<App />);
+describe('TrustX authentication entry', () => {
+  afterEach(() => cleanup());
 
-    expect(screen.getAllByText('Trust Engine').length).toBeGreaterThan(0);
-    expect(screen.getByText('Trustless Bug Bounty Platform')).toBeTruthy();
-    expect(screen.getByText('Researcher Trust Score')).toBeTruthy();
+  it('renders the sign-in page before an authenticated session exists', async () => {
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeTruthy();
+    expect(screen.getByText('Accounts are provisioned by TrustX. Contact your organization administrator if you need access.')).toBeTruthy();
   });
 
-  it('navigates to Bounty Marketplace view when clicked', () => {
+  it('offers distinct Company and Bug Reporter workspace choices without a sign-up control', async () => {
     render(<App />);
-
-    const bountyTab = screen.getByRole('button', { name: /Bounty Marketplace/i });
-    fireEvent.click(bountyTab);
-
-    expect(screen.getByText('Bug Bounty Marketplace')).toBeTruthy();
-    expect(screen.getByPlaceholderText(/Search bounties.../i)).toBeTruthy();
-  });
-
-  it('navigates to Trust Passport view when clicked', () => {
-    render(<App />);
-
-    const passportTab = screen.getByRole('button', { name: /Trust Passport/i });
-    fireEvent.click(passportTab);
-
-    expect(screen.getAllByText('Alex Rivera').length).toBeGreaterThan(0);
-    expect(screen.getByText('Verified Security Researcher')).toBeTruthy();
-  });
-
-  it('navigates to Contribution Explorer view when clicked', () => {
-    render(<App />);
-
-    const explorerTab = screen.getByRole('button', { name: /Contribution Explorer/i });
-    fireEvent.click(explorerTab);
-
-    expect(screen.getAllByText('Contribution Audit Explorer').length).toBeGreaterThan(0);
-  });
-
-  it('navigates to Trust Graph view when clicked', () => {
-    render(<App />);
-
-    const graphTab = screen.getByRole('button', { name: /Trust Graph/i });
-    fireEvent.click(graphTab);
-
-    expect(screen.getAllByText('Interactive Trust Graph').length).toBeGreaterThan(0);
-  });
-
-  it('navigates to Network & Ledger view when clicked', () => {
-    render(<App />);
-
-    const networkTab = screen.getByRole('button', { name: /Network & Ledger/i });
-    fireEvent.click(networkTab);
-
-    expect(screen.getAllByText('Network & Protocol Monitor').length).toBeGreaterThan(0);
+    await screen.findByRole('heading', { name: 'Sign in' });
+    expect(screen.getByRole('group', { name: 'Workspace type' }).querySelectorAll('button')).toHaveLength(2);
+    expect(screen.queryByText(/sign up/i)).toBeNull();
   });
 });

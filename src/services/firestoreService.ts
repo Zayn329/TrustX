@@ -7,9 +7,12 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  query,
+  where,
   QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { Bounty, VulnerabilityReport } from '../domain/types';
+import type { OracleTargetId } from '../domain/oracleTargets';
 
 // Collection names
 const BOUNTIES_COLLECTION = 'bounties';
@@ -24,6 +27,7 @@ const bountyFromDoc = (docRef: QueryDocumentSnapshot): Bounty => {
   const data = docRef.data();
   return {
     id: docRef.id,
+    companyId: data.companyId,
     title: data.title,
     organizationId: data.organizationId,
     organizationName: data.organizationName,
@@ -35,6 +39,7 @@ const bountyFromDoc = (docRef: QueryDocumentSnapshot): Bounty => {
     rules: data.rules,
     deadline: data.deadline,
     verificationRequirements: data.verificationRequirements,
+    oracleTargetId: data.oracleTargetId as OracleTargetId | undefined,
     status: data.status,
     escrowId: data.escrowId,
     escrowStatus: data.escrowStatus ?? '',
@@ -56,6 +61,7 @@ const bountyFromDoc = (docRef: QueryDocumentSnapshot): Bounty => {
 const bountyToFirestore = (bounty: Omit<Bounty, 'id'>) => {
   return {
     title: bounty.title,
+    companyId: bounty.companyId,
     organizationId: bounty.organizationId,
     organizationName: bounty.organizationName,
     organizationTrustScore: bounty.organizationTrustScore,
@@ -66,6 +72,7 @@ const bountyToFirestore = (bounty: Omit<Bounty, 'id'>) => {
     rules: bounty.rules,
     deadline: bounty.deadline,
     verificationRequirements: bounty.verificationRequirements,
+    ...(bounty.oracleTargetId ? { oracleTargetId: bounty.oracleTargetId } : {}),
     status: bounty.status,
     escrowId: bounty.escrowId,
     escrowStatus: bounty.escrowStatus,
@@ -89,6 +96,16 @@ export const getBounties = async (): Promise<Bounty[]> => {
   const bountySnapshot = await getDocs(bountyCol);
   console.log('[getBounties] Fetched bounty docs:', bountySnapshot.docs.map(doc => doc.id));
   return bountySnapshot.docs.map(bountyFromDoc);
+};
+
+/** Fetches only programs the caller can use. Firestore rules enforce the same boundary. */
+export const getAuthorizedBounties = async (uid: string, role: 'company' | 'researcher'): Promise<Bounty[]> => {
+  if (!db) throw new Error('Firestore is not initialized. Check Firebase configuration.');
+  const source = role === 'company'
+    ? query(collection(db, BOUNTIES_COLLECTION), where('companyId', '==', uid))
+    : query(collection(db, BOUNTIES_COLLECTION), where('status', '==', 'active'));
+  const snapshot = await getDocs(source);
+  return snapshot.docs.map(bountyFromDoc);
 };
 
 /**
@@ -169,6 +186,9 @@ const reportFromDoc = (docRef: QueryDocumentSnapshot): VulnerabilityReport => {
 
   return {
     id: docRef.id,
+    companyId: data.companyId,
+    status: data.status ?? 'submitted',
+    companyResponse: data.companyResponse ?? '',
     bountyId: data.bountyId,
     researcherId: data.researcherId,
     title: data.title,
@@ -207,6 +227,14 @@ export const getReports = async (): Promise<VulnerabilityReport[]> => {
   const reportsSnapshot = await getDocs(reportsCol);
   console.log('[getReports] Fetched report docs:', reportsSnapshot.docs.map(doc => doc.id));
   return reportsSnapshot.docs.map(reportFromDoc);
+};
+
+/** Fetches reports constrained to their researcher or the owning company. */
+export const getAuthorizedReports = async (uid: string, role: 'company' | 'researcher'): Promise<VulnerabilityReport[]> => {
+  if (!db) throw new Error('Firestore is not initialized. Check Firebase configuration.');
+  const source = query(collection(db, REPORTS_COLLECTION), where(role === 'company' ? 'companyId' : 'researcherId', '==', uid));
+  const snapshot = await getDocs(source);
+  return snapshot.docs.map(reportFromDoc);
 };
 
 /**

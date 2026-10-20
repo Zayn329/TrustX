@@ -1,3 +1,5 @@
+import type { OracleTargetId } from './oracleTargets';
+
 export type IdentityRole = 'researcher' | 'organization' | 'verifier';
 
 export interface ScoreBreakdownFactors {
@@ -27,6 +29,8 @@ export type SeverityLevel = 'Low' | 'Medium' | 'High' | 'Critical';
 
 export interface Bounty {
   id: string;
+  /** Firebase UID of the company that owns this program. */
+  companyId?: string;
   title: string;
   organizationId: string;
   organizationName: string;
@@ -38,6 +42,7 @@ export interface Bounty {
   rules: string[];
   deadline: string;
   verificationRequirements: string[];
+  oracleTargetId?: OracleTargetId;
   status: 'active' | 'in_review' | 'resolved' | 'closed';
   escrowId: string;
   escrowStatus: 'funded' | 'locked' | 'released' | 'disputed' | '';
@@ -49,6 +54,10 @@ export interface Bounty {
 
 export interface VulnerabilityReport {
   id: string;
+  /** Denormalized owner for rules-safe company report queries. */
+  companyId?: string;
+  status?: 'submitted' | 'needs_info' | 'accepted' | 'rejected';
+  companyResponse?: string;
   bountyId: string;
   researcherId: string;
   title: string;
@@ -58,6 +67,7 @@ export interface VulnerabilityReport {
   reproductionSteps: string;
   impact: string;
   evidence: string;
+  evidenceHash?: string;
   createdAt: string;
 }
 
@@ -83,6 +93,15 @@ export interface Verification {
   status: VerificationStatus;
   notes: string;
   verifiedAt?: string;
+  oracleExecutionId?: string;
+  oracleRequestHash?: string;
+  oracleEvidenceHash?: string;
+  oracleVerifierVersion?: string;
+  oracleStatus?: 'passed' | 'failed' | 'rejected' | 'unavailable';
+  verificationSource?: 'manual' | 'oracle_runtime' | 'oracle_runtime_ast';
+  oracleTargetId?: string;
+  astAnalysisId?: string;
+  astStatus?: 'passed' | 'failed' | 'not_run' | 'unavailable';
 }
 
 export interface ReputationEvent {

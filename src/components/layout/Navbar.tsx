@@ -3,9 +3,9 @@ import {
   LayoutDashboard,
   Target,
   UserCheck,
-  Search,
-  Network,
-  Activity,
+  BriefcaseBusiness,
+  FileWarning,
+  Settings,
   ChevronLeft,
   ChevronRight,
   Menu,
@@ -13,8 +13,9 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { useTrust } from '../../store/TrustContext';
+import { useAuth } from '../../auth/AuthContext';
 
-export type ViewTab = 'dashboard' | 'bounties' | 'passport' | 'explorer' | 'graph' | 'network';
+export type ViewTab = 'dashboard' | 'bounties' | 'reports' | 'passport' | 'settings' | 'explorer' | 'graph' | 'network';
 
 interface NavbarProps {
   activeTab: ViewTab;
@@ -29,8 +30,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   isCollapsed = false,
   setIsCollapsed
 }) => {
-  const { bounties, blockchainEvents, reports } = useTrust();
+  const { role } = useAuth();
+  const { bounties, reports } = useTrust();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const company = role === 'company';
 
   const navItems: {
     id: ViewTab;
@@ -41,42 +44,35 @@ export const Navbar: React.FC<NavbarProps> = ({
   }[] = [
     {
       id: 'dashboard',
-      label: 'Dashboard',
+      label: 'Overview',
       icon: <LayoutDashboard className="w-5 h-5 flex-shrink-0" />,
-      description: 'Overview & metrics'
+      description: company ? 'Program health' : 'Research activity'
     },
     {
       id: 'bounties',
-      label: 'Bounty Marketplace',
-      icon: <Target className="w-5 h-5 flex-shrink-0" />,
+      label: company ? 'Programs' : 'Discover programs',
+      icon: company ? <BriefcaseBusiness className="w-5 h-5 flex-shrink-0" /> : <Target className="w-5 h-5 flex-shrink-0" />,
       badge: bounties.length,
-      description: 'Active Escrow Bounties'
+      description: company ? 'Your bounty programs' : 'Available bounties'
     },
     {
-      id: 'passport',
+      id: 'reports',
+      label: company ? 'Submissions' : 'My submissions',
+      icon: <FileWarning className="w-5 h-5 flex-shrink-0" />,
+      badge: reports.length,
+      description: company ? 'Authorized report review' : 'Private report history'
+    },
+    ...(company ? [] : [{
+      id: 'passport' as ViewTab,
       label: 'Trust Passport',
       icon: <UserCheck className="w-5 h-5 flex-shrink-0" />,
       description: 'W3C VCs & Reputation'
-    },
+    }]),
     {
-      id: 'explorer',
-      label: 'Contribution Explorer',
-      icon: <Search className="w-5 h-5 flex-shrink-0" />,
-      badge: reports.length,
-      description: 'SHA-256 Audit Trail'
-    },
-    {
-      id: 'graph',
-      label: 'Trust Graph',
-      icon: <Network className="w-5 h-5 flex-shrink-0" />,
-      description: 'Interactive Proof Net'
-    },
-    {
-      id: 'network',
-      label: 'Network & Ledger',
-      icon: <Activity className="w-5 h-5 flex-shrink-0" />,
-      badge: blockchainEvents.length,
-      description: 'Live Event Logs & Jury'
+      id: 'settings',
+      label: company ? 'Company settings' : 'Researcher settings',
+      icon: <Settings className="w-5 h-5 flex-shrink-0" />,
+      description: 'Profile and access'
     },
   ];
 
@@ -112,7 +108,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex-1 py-4 px-3 space-y-1.5 overflow-y-auto">
           {!isCollapsed && (
             <div className="px-3 py-3 text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-slate-600">
-              Workspace
+              {company ? 'Company workspace' : 'Researcher workspace'}
             </div>
           )}
 
@@ -182,7 +178,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-indigo-400" />
-                <span className="font-bold text-slate-100 text-sm">Trust Engine Navigation</span>
+                <span className="font-bold text-slate-100 text-sm">TrustX Navigation</span>
               </div>
               <button
                 onClick={() => setMobileOpen(false)}
